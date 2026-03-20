@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng nhập - La Fleur Pâtisserie</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <a href="index.html" class="logo">La Fleur Pâtisserie</a>
+      <p>Chào mừng quay trở lại!</p>
+    </div>
+    <div class="auth-body">
+      <div id="error-msg" class="alert alert-danger" style="display:none"></div>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu</label>
+          <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">Đăng nhập</button>
+      </form>
+      <div style="margin-top:1.2rem;padding:0.9rem;background:var(--gray-light);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--gray)">
+        <strong>Demo:</strong><br>
+        📧 lan.nguyen@email.com / 123456<br>
+        <a href="admin-login.html" style="color:var(--caramel)">→ Trang Admin</a>
+      </div>
+    </div>
+    <div class="auth-footer">
+      Chưa có tài khoản? <a href="register.html">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="data.js"></script>
+<script>
+  // If already logged in
+  if (DB.Auth.isLoggedIn()) location.href = 'index.html';
+
+  document.getElementById('login-form').onsubmit = (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const result = DB.Auth.login(email, password, false);
+    if (result.ok) {
+      DB.showToast('Đăng nhập thành công!', 'success');
+      const redirect = new URLSearchParams(location.search).get('redirect') || 'index.html';
+      setTimeout(() => location.href = redirect, 600);
+    } else {
+      const err = document.getElementById('error-msg');
+      err.textContent = result.msg;
+      err.style.display = 'flex';
+    }
+  };
+</script>
+</body>
+</html>

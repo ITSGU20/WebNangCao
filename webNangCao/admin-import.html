@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý nhập hàng – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <select id="statusFilter" class="form-control" style="width:180px" onchange="renderTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="completed">Đã hoàn thành</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAddModal()" style="margin-left:auto">+ Tạo phiếu nhập</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Mã phiếu</th>
+              <th>Ngày nhập</th>
+              <th>Số mặt hàng</th>
+              <th>Tổng tiền vốn</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Import Modal -->
+<div class="modal-overlay" id="importModal" onclick="closeModalOutside(event)">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h3>Tạo phiếu nhập hàng</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Ngày nhập *</label>
+        <input type="date" id="importDate" class="form-control" style="width:200px"/>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <strong>Danh sách hàng nhập</strong>
+        <button class="btn btn-sm btn-outline" onclick="addImportRow()">+ Thêm dòng</button>
+      </div>
+
+      <table class="admin-table" style="margin-bottom:1rem">
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th style="width:120px">Số lượng</th>
+            <th style="width:160px">Giá vốn (đ)</th>
+            <th style="width:160px">Thành tiền</th>
+            <th style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody id="importRows"></tbody>
+      </table>
+
+      <div style="text-align:right;font-size:1.1rem;font-weight:600;color:var(--primary)">
+        Tổng cộng: <span id="importTotal">0 đ</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-secondary" onclick="saveImport('pending')">Lưu nháp</button>
+      <button class="btn btn-primary" onclick="saveImport('completed')">Hoàn thành & cập nhật kho</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Detail Modal -->
+<div class="modal-overlay" id="detailModal" onclick="closeDetailOutside(event)">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="detailTitle">Chi tiết phiếu nhập</h3>
+      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" id="detailFooter">
+      <button class="btn btn-outline" onclick="closeDetailModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('import');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Quản lý nhập hàng');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 10;
+  let importRowCount = 0;
+  let currentDetailId = null;
+
+  function getFiltered() {
+    const status = document.getElementById('statusFilter').value;
+    return DB.Imports.list().filter(i => !status || i.status === status)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const filtered = getFiltered();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có phiếu nhập nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(imp => {
+        const total = imp.items.reduce((s, it) => s + (it.qty * it.costPrice), 0);
+        return `
+          <tr>
+            <td><code style="background:var(--bg);padding:.2rem .5rem;border-radius:4px">#${imp.id.toString().slice(-6)}</code></td>
+            <td>${imp.date || '—'}</td>
+            <td>${imp.items.length} mặt hàng</td>
+            <td style="font-weight:600;color:var(--primary)">${DB.formatCurrency(total)}</td>
+            <td><span class="badge ${imp.status === 'completed' ? 'badge-success' : 'badge-warning'}">${imp.status === 'completed' ? 'Hoàn thành' : 'Chờ xử lý'}</span></td>
+            <td>${DB.formatDate(imp.createdAt)}</td>
+            <td>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-sm btn-outline" onclick="openDetailModal(${imp.id})">Xem</button>
+                ${imp.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="completeImport(${imp.id})">Hoàn thành</button>` : ''}
+                ${imp.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="deleteImport(${imp.id})">Xoá</button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function openAddModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('importDate').value = today;
+    document.getElementById('importRows').innerHTML = '';
+    importRowCount = 0;
+    addImportRow();
+    document.getElementById('importModal').classList.add('active');
+  }
+  function closeModal() { document.getElementById('importModal').classList.remove('active'); }
+  function closeModalOutside(e) { if (e.target.id === 'importModal') closeModal(); }
+
+  function addImportRow() {
+    const products = DB.Products.list().filter(p => p.active !== false);
+    const opts = products.map(p => `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.emoji||''} ${p.name}</option>`).join('');
+    const row = document.createElement('tr');
+    row.id = `row_${importRowCount}`;
+    row.innerHTML = `
+      <td>
+        <select class="form-control prod-select" onchange="autoCost(this)" style="width:100%">
+          <option value="">-- Chọn sản phẩm --</option>${opts}
+        </select>
+      </td>
+      <td><input type="number" class="form-control qty-input" value="1" min="1" oninput="calcTotal()"/></td>
+      <td><input type="number" class="form-control cost-input" value="" min="0" placeholder="0" oninput="calcTotal()"/></td>
+      <td class="row-total" style="font-weight:600">0 đ</td>
+      <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)">✕</button></td>
+    `;
+    document.getElementById('importRows').appendChild(row);
+    importRowCount++;
+    calcTotal();
+  }
+
+  function autoCost(sel) {
+    const opt = sel.selectedOptions[0];
+    const cost = opt ? opt.dataset.cost : 0;
+    const row = sel.closest('tr');
+    row.querySelector('.cost-input').value = cost;
+    calcTotal();
+  }
+
+  function removeRow(btn) {
+    btn.closest('tr').remove();
+    calcTotal();
+  }
+
+  function calcTotal() {
+    let total = 0;
+    document.querySelectorAll('#importRows tr').forEach(row => {
+      const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
+      const cost = parseFloat(row.querySelector('.cost-input')?.value) || 0;
+      const lineTotal = qty * cost;
+      const cell = row.querySelector('.row-total');
+      if (cell) cell.textContent = DB.formatCurrency(lineTotal);
+      total += lineTotal;
+    });
+    document.getElementById('importTotal').textContent = DB.formatCurrency(total);
+  }
+
+  function getImportRows() {
+    const items = [];
+    document.querySelectorAll('#importRows tr').forEach(row => {
+      const productId = parseInt(row.querySelector('.prod-select')?.value);
+      const qty = parseInt(row.querySelector('.qty-input')?.value) || 0;
+      const costPrice = parseFloat(row.querySelector('.cost-input')?.value) || 0;
+      if (productId && qty > 0) items.push({ productId, qty, costPrice });
+    });
+    return items;
+  }
+
+  function saveImport(status) {
+    const date = document.getElementById('importDate').value;
+    if (!date) return DB.showToast('Vui lòng chọn ngày nhập', 'error');
+    const items = getImportRows();
+    if (items.length === 0) return DB.showToast('Vui lòng thêm ít nhất 1 sản phẩm', 'error');
+
+    const imports = DB.Imports.list();
+    const newImport = { id: Date.now(), date, items, status, createdAt: new Date().toISOString() };
+
+    if (status === 'completed') {
+      applyStockUpdate(items);
+    }
+
+    imports.push(newImport);
+    localStorage.setItem('lf_imports', JSON.stringify(imports));
+    DB.showToast(status === 'completed' ? 'Đã hoàn thành phiếu nhập & cập nhật kho' : 'Đã lưu phiếu nhập nháp');
+    closeModal();
+    renderPage();
+  }
+
+  function applyStockUpdate(items) {
+    const products = DB.Products.list();
+    items.forEach(it => {
+      const idx = products.findIndex(p => p.id === it.productId);
+      if (idx >= 0) {
+        products[idx].stock = (products[idx].stock || 0) + it.qty;
+        if (it.costPrice > 0) products[idx].costPrice = it.costPrice;
+      }
+    });
+    localStorage.setItem('lf_products', JSON.stringify(products));
+  }
+
+  function completeImport(id) {
+    const imports = DB.Imports.list();
+    const idx = imports.findIndex(i => i.id === id);
+    if (idx < 0) return;
+    applyStockUpdate(imports[idx].items);
+    imports[idx].status = 'completed';
+    localStorage.setItem('lf_imports', JSON.stringify(imports));
+    DB.showToast('Đã cập nhật trạng thái & cộng tồn kho');
+    renderPage();
+  }
+
+  function deleteImport(id) {
+    if (!confirm('Bạn có chắc muốn xoá phiếu nhập này?')) return;
+    const imports = DB.Imports.list().filter(i => i.id !== id);
+    localStorage.setItem('lf_imports', JSON.stringify(imports));
+    DB.showToast('Đã xoá phiếu nhập');
+    renderPage();
+  }
+
+  function openDetailModal(id) {
+    const imp = DB.Imports.list().find(i => i.id === id);
+    if (!imp) return;
+    const products = DB.Products.list();
+    currentDetailId = id;
+    document.getElementById('detailTitle').textContent = `Phiếu nhập #${id.toString().slice(-6)}`;
+    const total = imp.items.reduce((s, it) => s + it.qty * it.costPrice, 0);
+    document.getElementById('detailBody').innerHTML = `
+      <div style="display:flex;gap:2rem;margin-bottom:1.5rem;flex-wrap:wrap">
+        <div><span style="color:var(--muted)">Ngày nhập:</span> <strong>${imp.date || '—'}</strong></div>
+        <div><span style="color:var(--muted)">Ngày tạo:</span> <strong>${DB.formatDate(imp.createdAt)}</strong></div>
+        <div><span style="color:var(--muted)">Trạng thái:</span> <span class="badge ${imp.status === 'completed' ? 'badge-success' : 'badge-warning'}">${imp.status === 'completed' ? 'Hoàn thành' : 'Chờ xử lý'}</span></div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Giá vốn</th><th>Thành tiền</th></tr></thead>
+        <tbody>
+          ${imp.items.map(it => {
+            const p = products.find(x => x.id === it.productId);
+            return `<tr>
+              <td>${p ? `${p.emoji||''} ${p.name}` : `SP #${it.productId}`}</td>
+              <td>${it.qty}</td>
+              <td>${DB.formatCurrency(it.costPrice)}</td>
+              <td style="font-weight:600">${DB.formatCurrency(it.qty * it.costPrice)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--bg)">
+            <td colspan="3" style="text-align:right;font-weight:600">Tổng cộng:</td>
+            <td style="font-weight:700;color:var(--primary)">${DB.formatCurrency(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+    const footer = document.getElementById('detailFooter');
+    footer.innerHTML = `<button class="btn btn-outline" onclick="closeDetailModal()">Đóng</button>`;
+    if (imp.status === 'pending') {
+      footer.innerHTML += `<button class="btn btn-success" onclick="completeImport(${id});closeDetailModal()">Hoàn thành & cập nhật kho</button>`;
+    }
+    document.getElementById('detailModal').classList.add('active');
+  }
+  function closeDetailModal() { document.getElementById('detailModal').classList.remove('active'); }
+  function closeDetailOutside(e) { if (e.target.id === 'detailModal') closeDetailModal(); }
+
+  renderPage();
+</script>
+</body>
+</html>

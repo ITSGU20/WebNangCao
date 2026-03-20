@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý tồn kho – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .stock-bar-wrap { background: var(--border); border-radius: 100px; height: 8px; width: 120px; overflow: hidden; }
+    .stock-bar { height: 100%; border-radius: 100px; transition: width .3s; }
+    .low-stock-card { border-left: 4px solid #e74c3c; }
+  </style>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <!-- Summary -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem" id="statsRow"></div>
+
+      <!-- Low stock warnings -->
+      <div class="card low-stock-card" id="lowStockAlert" style="margin-bottom:1.5rem;display:none">
+        <h4 style="color:#e74c3c;margin-bottom:.75rem">⚠️ Sản phẩm sắp hết hàng</h4>
+        <div id="lowStockList" style="display:flex;flex-wrap:wrap;gap:.5rem"></div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm sản phẩm…" style="width:240px" oninput="renderTable()"/>
+          <select id="catFilter" class="form-control" style="width:200px" onchange="renderTable()">
+            <option value="">Tất cả danh mục</option>
+          </select>
+          <select id="stockFilter" class="form-control" style="width:200px" onchange="renderTable()">
+            <option value="">Tất cả mức tồn kho</option>
+            <option value="out">Hết hàng (0)</option>
+            <option value="low">Sắp hết (1–10)</option>
+            <option value="ok">Còn hàng (>10)</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAdjustModal(null)" style="margin-left:auto">± Điều chỉnh tồn kho</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Sản phẩm</th>
+              <th>Danh mục</th>
+              <th>Tồn kho</th>
+              <th>Mức tồn</th>
+              <th>Giá vốn</th>
+              <th>Giá trị tồn</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Adjust Stock Modal -->
+<div class="modal-overlay" id="adjustModal" onclick="closeAdjustOutside(event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3>Điều chỉnh tồn kho</h3>
+      <button class="modal-close" onclick="closeAdjustModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Sản phẩm *</label>
+        <select id="adjProductId" class="form-control" onchange="updateCurrentStock()"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Loại điều chỉnh</label>
+        <select id="adjType" class="form-control">
+          <option value="add">Cộng vào</option>
+          <option value="subtract">Trừ đi</option>
+          <option value="set">Đặt về mức</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số lượng *</label>
+        <input type="number" id="adjQty" class="form-control" placeholder="0" min="0"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ghi chú</label>
+        <input type="text" id="adjNote" class="form-control" placeholder="Lý do điều chỉnh (tuỳ chọn)"/>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:1rem">
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">Tồn kho hiện tại:</span>
+          <strong id="currentStockDisplay">—</strong>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeAdjustModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="applyAdjust()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="historyTitle">Lịch sử tồn kho</h3>
+      <button class="modal-close" onclick="closeHistoryModal()">✕</button>
+    </div>
+    <div class="modal-body" id="historyBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeHistoryModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('inventory');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Tồn kho');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 15;
+  const LOW_STOCK_THRESHOLD = 10;
+  const HISTORY_KEY = 'lf_stock_history';
+
+  function getHistory() { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  function addHistory(entry) {
+    const h = getHistory();
+    h.unshift({ ...entry, id: Date.now(), at: new Date().toISOString() });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 200)));
+  }
+
+  function populateCatFilter() {
+    const cats = DB.Categories.list();
+    document.getElementById('catFilter').innerHTML = '<option value="">Tất cả danh mục</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  function populateProductSelect(selectedId) {
+    const products = DB.Products.list();
+    document.getElementById('adjProductId').innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + products.map(p => `<option value="${p.id}">${p.emoji||''} ${p.name} (tồn: ${p.stock||0})</option>`).join('');
+    if (selectedId) document.getElementById('adjProductId').value = selectedId;
+    updateCurrentStock();
+  }
+
+  function updateCurrentStock() {
+    const id = parseInt(document.getElementById('adjProductId').value);
+    const p = id ? DB.Products.list().find(x => x.id === id) : null;
+    document.getElementById('currentStockDisplay').textContent = p ? p.stock || 0 : '—';
+  }
+
+  function renderStats() {
+    const products = DB.Products.list();
+    const total = products.reduce((s, p) => s + (p.stock || 0), 0);
+    const outOfStock = products.filter(p => !p.stock || p.stock <= 0).length;
+    const lowStock = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).length;
+    const stockValue = products.reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0);
+    document.getElementById('statsRow').innerHTML = `
+      <div class="admin-stat-card">
+        <div class="stat-icon" style="background:#e8f4f8">📦</div>
+        <div class="stat-info"><div class="stat-value">${total}</div><div class="stat-label">Tổng tồn kho</div></div>
+      </div>
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterStock('out')">
+        <div class="stat-icon" style="background:#f8d7da">❌</div>
+        <div class="stat-info"><div class="stat-value" style="color:#e74c3c">${outOfStock}</div><div class="stat-label">Hết hàng</div></div>
+      </div>
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterStock('low')">
+        <div class="stat-icon" style="background:#fff3cd">⚠️</div>
+        <div class="stat-info"><div class="stat-value" style="color:#f39c12">${lowStock}</div><div class="stat-label">Sắp hết hàng</div></div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="stat-icon" style="background:#d4edda">💰</div>
+        <div class="stat-info"><div class="stat-value" style="font-size:1.1rem">${DB.formatCurrency(stockValue)}</div><div class="stat-label">Giá trị tồn kho</div></div>
+      </div>
+    `;
+  }
+
+  function renderLowStockAlert() {
+    const products = DB.Products.list().filter(p => p.stock >= 0 && p.stock <= LOW_STOCK_THRESHOLD);
+    const el = document.getElementById('lowStockAlert');
+    if (products.length === 0) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    document.getElementById('lowStockList').innerHTML = products.map(p => `
+      <span style="background:var(--bg);border:1px solid #e74c3c22;border-radius:8px;padding:.3rem .75rem;font-size:.85rem">
+        ${p.emoji||''} ${p.name} <strong style="color:#e74c3c">(${p.stock})</strong>
+      </span>`).join('');
+  }
+
+  function filterStock(v) {
+    document.getElementById('stockFilter').value = v;
+    renderTable();
+  }
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const catId = document.getElementById('catFilter').value;
+    const stockF = document.getElementById('stockFilter').value;
+    return DB.Products.list().filter(p => {
+      const matchSearch = !search || p.name.toLowerCase().includes(search);
+      const matchCat = !catId || String(p.catId) === catId;
+      const s = p.stock || 0;
+      const matchStock = !stockF || (stockF === 'out' ? s <= 0 : stockF === 'low' ? s > 0 && s <= 10 : s > 10);
+      return matchSearch && matchCat && matchStock;
+    }).sort((a, b) => (a.stock||0) - (b.stock||0));
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const cats = DB.Categories.list();
+    const filtered = getFiltered();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const maxStock = Math.max(...DB.Products.list().map(p => p.stock||0), 1);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có sản phẩm nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(p => {
+        const cat = cats.find(c => c.id === p.catId);
+        const s = p.stock || 0;
+        const pct = Math.min(100, Math.round(s / maxStock * 100));
+        const barColor = s <= 0 ? '#e74c3c' : s <= 10 ? '#f39c12' : '#27ae60';
+        const stockValue = s * (p.costPrice || 0);
+        return `
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:.5rem"><span>${p.emoji||'🍰'}</span><strong>${p.name}</strong></div></td>
+            <td>${cat ? cat.name : '—'}</td>
+            <td>
+              <span style="font-size:1.1rem;font-weight:700;color:${barColor}">${s}</span>
+            </td>
+            <td>
+              <div class="stock-bar-wrap">
+                <div class="stock-bar" style="width:${pct}%;background:${barColor}"></div>
+              </div>
+            </td>
+            <td style="color:var(--muted)">${p.costPrice ? DB.formatCurrency(p.costPrice) : '—'}</td>
+            <td style="font-weight:600">${stockValue > 0 ? DB.formatCurrency(stockValue) : '—'}</td>
+            <td>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-sm btn-outline" onclick="openAdjustModal(${p.id})">Điều chỉnh</button>
+                <button class="btn btn-sm btn-outline" onclick="openHistoryModal(${p.id})">Lịch sử</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function openAdjustModal(productId) {
+    populateProductSelect(productId);
+    document.getElementById('adjType').value = 'add';
+    document.getElementById('adjQty').value = '';
+    document.getElementById('adjNote').value = '';
+    document.getElementById('adjustModal').classList.add('active');
+  }
+  function closeAdjustModal() { document.getElementById('adjustModal').classList.remove('active'); }
+  function closeAdjustOutside(e) { if (e.target.id === 'adjustModal') closeAdjustModal(); }
+
+  function applyAdjust() {
+    const productId = parseInt(document.getElementById('adjProductId').value);
+    const type = document.getElementById('adjType').value;
+    const qty = parseInt(document.getElementById('adjQty').value);
+    const note = document.getElementById('adjNote').value.trim();
+    if (!productId) return DB.showToast('Vui lòng chọn sản phẩm', 'error');
+    if (isNaN(qty) || qty < 0) return DB.showToast('Vui lòng nhập số lượng hợp lệ', 'error');
+
+    const products = DB.Products.list();
+    const idx = products.findIndex(p => p.id === productId);
+    if (idx < 0) return;
+    const before = products[idx].stock || 0;
+    let after = before;
+    if (type === 'add') after = before + qty;
+    else if (type === 'subtract') after = Math.max(0, before - qty);
+    else if (type === 'set') after = qty;
+
+    products[idx].stock = after;
+    localStorage.setItem('lf_products', JSON.stringify(products));
+    addHistory({ productId, productName: products[idx].name, type, qty, before, after, note });
+    DB.showToast(`Đã cập nhật tồn kho: ${before} → ${after}`);
+    closeAdjustModal();
+    renderStats();
+    renderLowStockAlert();
+    renderPage();
+  }
+
+  function openHistoryModal(productId) {
+    const p = DB.Products.list().find(x => x.id === productId);
+    const history = getHistory().filter(h => h.productId === productId);
+    document.getElementById('historyTitle').textContent = `Lịch sử: ${p ? p.name : 'Sản phẩm'}`;
+    if (history.length === 0) {
+      document.getElementById('historyBody').innerHTML = '<p style="text-align:center;color:var(--muted);padding:2rem">Chưa có lịch sử điều chỉnh</p>';
+    } else {
+      const typeLabel = { add: 'Cộng', subtract: 'Trừ', set: 'Đặt về' };
+      document.getElementById('historyBody').innerHTML = `
+        <table class="admin-table">
+          <thead><tr><th>Thời gian</th><th>Loại</th><th>Số lượng</th><th>Trước</th><th>Sau</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            ${history.slice(0, 50).map(h => `
+              <tr>
+                <td style="font-size:.85rem">${DB.formatDate(h.at)}</td>
+                <td>${typeLabel[h.type]||h.type}</td>
+                <td style="font-weight:600">${h.qty}</td>
+                <td>${h.before}</td>
+                <td style="font-weight:600;color:${h.after > h.before ? '#27ae60' : '#e74c3c'}">${h.after}</td>
+                <td style="color:var(--muted)">${h.note || '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+    document.getElementById('historyModal').classList.add('active');
+  }
+  function closeHistoryModal() { document.getElementById('historyModal').classList.remove('active'); }
+  function closeHistoryOutside(e) { if (e.target.id === 'historyModal') closeHistoryModal(); }
+
+  populateCatFilter();
+  renderStats();
+  renderLowStockAlert();
+  renderPage();
+</script>
+</body>
+</html>

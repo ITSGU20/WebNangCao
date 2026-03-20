@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý giá & lợi nhuận – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .profit-high { color: #27ae60; font-weight: 600; }
+    .profit-mid  { color: #f39c12; font-weight: 600; }
+    .profit-low  { color: #e74c3c; font-weight: 600; }
+    .stat-mini { background: var(--bg); border-radius: 12px; padding: 1rem 1.5rem; text-align: center; }
+    .stat-mini .val { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+    .stat-mini .lbl { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+  </style>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <!-- Summary stats -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem" id="statsRow"></div>
+
+      <!-- Filters -->
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm sản phẩm…" style="width:240px" oninput="renderTable()"/>
+          <select id="catFilter" class="form-control" style="width:200px" onchange="renderTable()">
+            <option value="">Tất cả danh mục</option>
+          </select>
+          <select id="profitFilter" class="form-control" style="width:200px" onchange="renderTable()">
+            <option value="">Tất cả mức lợi nhuận</option>
+            <option value="high">Cao (≥ 40%)</option>
+            <option value="mid">Trung bình (20–40%)</option>
+            <option value="low">Thấp (< 20%)</option>
+          </select>
+          <button class="btn btn-outline" onclick="openBulkModal()" style="margin-left:auto">✏️ Điều chỉnh hàng loạt</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Sản phẩm</th>
+              <th>Danh mục</th>
+              <th>Giá vốn</th>
+              <th>Giá bán</th>
+              <th>Lợi nhuận</th>
+              <th>% LN</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Edit Price Modal -->
+<div class="modal-overlay" id="priceModal" onclick="closePriceOutside(event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3>Cập nhật giá</h3>
+      <button class="modal-close" onclick="closePriceModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="priceEditId"/>
+      <p style="margin-bottom:1rem;font-weight:600" id="priceProductName"></p>
+      <div class="form-group">
+        <label class="form-label">Giá vốn (đ)</label>
+        <input type="number" id="priceCost" class="form-control" min="0" oninput="previewProfit()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giá bán (đ) *</label>
+        <input type="number" id="priceSell" class="form-control" min="0" oninput="previewProfit()"/>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:1rem;text-align:center;margin-top:.5rem">
+        <div style="font-size:.85rem;color:var(--muted)">Lợi nhuận dự kiến</div>
+        <div id="profitPreview" style="font-size:1.5rem;font-weight:700;color:var(--primary)">—</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePriceModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="savePrice()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk adjust Modal -->
+<div class="modal-overlay" id="bulkModal" onclick="closeBulkOutside(event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3>Điều chỉnh giá hàng loạt</h3>
+      <button class="modal-close" onclick="closeBulkModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Áp dụng cho danh mục</label>
+        <select id="bulkCatId" class="form-control">
+          <option value="">Tất cả sản phẩm</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Loại điều chỉnh</label>
+        <select id="bulkType" class="form-control">
+          <option value="percent_up">Tăng % giá bán</option>
+          <option value="percent_down">Giảm % giá bán</option>
+          <option value="set_margin">Đặt % lợi nhuận cố định</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giá trị (%)</label>
+        <input type="number" id="bulkValue" class="form-control" placeholder="10" min="0" max="200"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeBulkModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="applyBulk()">Áp dụng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('pricing');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Giá & Lợi nhuận');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 15;
+
+  function profitClass(pct) {
+    if (pct >= 40) return 'profit-high';
+    if (pct >= 20) return 'profit-mid';
+    return 'profit-low';
+  }
+
+  function populateCatFilters() {
+    const cats = DB.Categories.list();
+    const opts = cats.map(c => `<option value="${c.id}">${c.emoji||''} ${c.name}</option>`).join('');
+    document.getElementById('catFilter').innerHTML = '<option value="">Tất cả danh mục</option>' + opts;
+    document.getElementById('bulkCatId').innerHTML = '<option value="">Tất cả sản phẩm</option>' + opts;
+  }
+
+  function renderStats() {
+    const products = DB.Products.list();
+    const withCost = products.filter(p => p.costPrice > 0);
+    const avgMargin = withCost.length ? Math.round(withCost.reduce((s, p) => s + ((p.price - p.costPrice) / p.costPrice * 100), 0) / withCost.length) : 0;
+    const highProfit = withCost.filter(p => (p.price - p.costPrice) / p.costPrice * 100 >= 40).length;
+    const noMargin = products.filter(p => !p.costPrice).length;
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-mini"><div class="val">${products.length}</div><div class="lbl">Tổng sản phẩm</div></div>
+      <div class="stat-mini"><div class="val">${avgMargin}%</div><div class="lbl">LN trung bình</div></div>
+      <div class="stat-mini"><div class="val">${highProfit}</div><div class="lbl">LN cao (≥40%)</div></div>
+      <div class="stat-mini"><div class="val" style="color:#e74c3c">${noMargin}</div><div class="lbl">Chưa có giá vốn</div></div>
+    `;
+  }
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const catId = document.getElementById('catFilter').value;
+    const profitF = document.getElementById('profitFilter').value;
+    return DB.Products.list().filter(p => {
+      const matchSearch = !search || p.name.toLowerCase().includes(search);
+      const matchCat = !catId || String(p.catId) === catId;
+      let matchProfit = true;
+      if (profitF && p.costPrice > 0) {
+        const pct = (p.price - p.costPrice) / p.costPrice * 100;
+        if (profitF === 'high') matchProfit = pct >= 40;
+        else if (profitF === 'mid') matchProfit = pct >= 20 && pct < 40;
+        else if (profitF === 'low') matchProfit = pct < 20;
+      } else if (profitF) {
+        matchProfit = false;
+      }
+      return matchSearch && matchCat && matchProfit;
+    });
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const cats = DB.Categories.list();
+    const filtered = getFiltered();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có sản phẩm nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(p => {
+        const cat = cats.find(c => c.id === p.catId);
+        const hasCost = p.costPrice > 0;
+        const profit = hasCost ? p.price - p.costPrice : null;
+        const pct = hasCost ? Math.round((p.price - p.costPrice) / p.costPrice * 100) : null;
+        return `
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:.5rem"><span>${p.emoji||'🍰'}</span><strong>${p.name}</strong></div></td>
+            <td>${cat ? cat.name : '—'}</td>
+            <td>${hasCost ? DB.formatCurrency(p.costPrice) : '<span style="color:var(--muted)">Chưa có</span>'}</td>
+            <td style="font-weight:600">${DB.formatCurrency(p.price)}</td>
+            <td>${hasCost ? DB.formatCurrency(profit) : '—'}</td>
+            <td>${hasCost ? `<span class="${profitClass(pct)}">${pct}%</span>` : '—'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="openPriceModal(${p.id})">Cập nhật giá</button></td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function openPriceModal(id) {
+    const p = DB.Products.list().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('priceEditId').value = p.id;
+    document.getElementById('priceProductName').textContent = `${p.emoji||''} ${p.name}`;
+    document.getElementById('priceCost').value = p.costPrice || '';
+    document.getElementById('priceSell').value = p.price;
+    previewProfit();
+    document.getElementById('priceModal').classList.add('active');
+  }
+  function closePriceModal() { document.getElementById('priceModal').classList.remove('active'); }
+  function closePriceOutside(e) { if (e.target.id === 'priceModal') closePriceModal(); }
+
+  function previewProfit() {
+    const cost = parseFloat(document.getElementById('priceCost').value) || 0;
+    const sell = parseFloat(document.getElementById('priceSell').value) || 0;
+    const el = document.getElementById('profitPreview');
+    if (cost > 0 && sell > 0) {
+      const pct = Math.round((sell - cost) / cost * 100);
+      el.textContent = `${DB.formatCurrency(sell - cost)} (${pct}%)`;
+      el.className = profitClass(pct);
+    } else {
+      el.textContent = '—';
+      el.className = '';
+    }
+  }
+
+  function savePrice() {
+    const id = parseInt(document.getElementById('priceEditId').value);
+    const cost = parseFloat(document.getElementById('priceCost').value) || 0;
+    const sell = parseFloat(document.getElementById('priceSell').value);
+    if (!sell) return DB.showToast('Vui lòng nhập giá bán', 'error');
+    const products = DB.Products.list();
+    const idx = products.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      products[idx].price = sell;
+      products[idx].costPrice = cost;
+      localStorage.setItem('lf_products', JSON.stringify(products));
+      DB.showToast('Cập nhật giá thành công');
+    }
+    closePriceModal();
+    renderPage();
+    renderStats();
+  }
+
+  function openBulkModal() { document.getElementById('bulkModal').classList.add('active'); }
+  function closeBulkModal() { document.getElementById('bulkModal').classList.remove('active'); }
+  function closeBulkOutside(e) { if (e.target.id === 'bulkModal') closeBulkModal(); }
+
+  function applyBulk() {
+    const catId = document.getElementById('bulkCatId').value;
+    const type = document.getElementById('bulkType').value;
+    const val = parseFloat(document.getElementById('bulkValue').value);
+    if (!val || val <= 0) return DB.showToast('Vui lòng nhập giá trị hợp lệ', 'error');
+
+    const products = DB.Products.list();
+    let count = 0;
+    products.forEach((p, idx) => {
+      if (catId && String(p.catId) !== catId) return;
+      if (type === 'percent_up') {
+        products[idx].price = Math.round(p.price * (1 + val / 100));
+      } else if (type === 'percent_down') {
+        products[idx].price = Math.round(p.price * (1 - val / 100));
+      } else if (type === 'set_margin' && p.costPrice > 0) {
+        products[idx].price = Math.round(p.costPrice * (1 + val / 100));
+      }
+      count++;
+    });
+    localStorage.setItem('lf_products', JSON.stringify(products));
+    DB.showToast(`Đã cập nhật ${count} sản phẩm`);
+    closeBulkModal();
+    renderPage();
+    renderStats();
+  }
+
+  populateCatFilters();
+  renderStats();
+  renderPage();
+</script>
+</body>
+</html>

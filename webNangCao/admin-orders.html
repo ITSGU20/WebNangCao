@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý đơn hàng – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <!-- Filter bar -->
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tên KH, SĐT, mã đơn…" style="width:240px" oninput="renderTable()"/>
+          <select id="statusFilter" class="form-control" style="width:180px" onchange="renderTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="new">Mới</option>
+            <option value="processing">Đang xử lý</option>
+            <option value="delivered">Đã giao</option>
+            <option value="cancelled">Đã huỷ</option>
+          </select>
+          <input type="date" id="dateFrom" class="form-control" style="width:160px" onchange="renderTable()" title="Từ ngày"/>
+          <input type="date" id="dateTo" class="form-control" style="width:160px" onchange="renderTable()" title="Đến ngày"/>
+          <button class="btn btn-outline" onclick="clearFilters()">Xoá lọc</button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem" id="statsRow"></div>
+
+      <!-- Table -->
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Khách hàng</th>
+              <th>Ngày đặt</th>
+              <th>Tổng tiền</th>
+              <th>Thanh toán</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderModal" onclick="closeOrderOutside(event)">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="orderModalTitle">Chi tiết đơn hàng</h3>
+      <button class="modal-close" onclick="closeOrderModal()">✕</button>
+    </div>
+    <div class="modal-body" id="orderModalBody"></div>
+    <div class="modal-footer" id="orderModalFooter">
+      <button class="btn btn-outline" onclick="closeOrderModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('orders');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Quản lý đơn hàng');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 10;
+
+  const STATUS_FLOW = {
+    new: { next: 'processing', label: 'Chuyển sang Xử lý', btnClass: 'btn-primary' },
+    processing: { next: 'delivered', label: 'Đánh dấu Đã giao', btnClass: 'btn-success' },
+  };
+
+  const paymentLabel = { cash: 'Tiền mặt', transfer: 'Chuyển khoản', online: 'Online' };
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    return DB.Orders.list()
+      .filter(o => {
+        const matchSearch = !search || (o.userName||'').toLowerCase().includes(search) || (o.phone||'').includes(search) || String(o.id).includes(search);
+        const matchStatus = !status || o.status === status;
+        const oDate = o.createdAt ? o.createdAt.split('T')[0] : '';
+        const matchFrom = !from || oDate >= from;
+        const matchTo = !to || oDate <= to;
+        return matchSearch && matchStatus && matchFrom && matchTo;
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  function renderStats() {
+    const all = DB.Orders.list();
+    const counts = { new: 0, processing: 0, delivered: 0, cancelled: 0 };
+    all.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+    document.getElementById('statsRow').innerHTML = `
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterByStatus('new')">
+        <div class="stat-icon" style="background:#fff3cd">📥</div>
+        <div class="stat-info"><div class="stat-value">${counts.new}</div><div class="stat-label">Đơn mới</div></div>
+      </div>
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterByStatus('processing')">
+        <div class="stat-icon" style="background:#cce5ff">⚙️</div>
+        <div class="stat-info"><div class="stat-value">${counts.processing}</div><div class="stat-label">Đang xử lý</div></div>
+      </div>
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterByStatus('delivered')">
+        <div class="stat-icon" style="background:#d4edda">✅</div>
+        <div class="stat-info"><div class="stat-value">${counts.delivered}</div><div class="stat-label">Đã giao</div></div>
+      </div>
+      <div class="admin-stat-card" style="cursor:pointer" onclick="filterByStatus('cancelled')">
+        <div class="stat-icon" style="background:#f8d7da">❌</div>
+        <div class="stat-info"><div class="stat-value">${counts.cancelled}</div><div class="stat-label">Đã huỷ</div></div>
+      </div>
+    `;
+  }
+
+  function filterByStatus(s) {
+    document.getElementById('statusFilter').value = s;
+    renderTable();
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    renderTable();
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const filtered = getFiltered();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có đơn hàng nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(o => {
+        const sl = DB.statusLabel(o.status);
+        return `
+          <tr>
+            <td><code style="background:var(--bg);padding:.2rem .5rem;border-radius:4px">#${String(o.id).slice(-6)}</code></td>
+            <td>
+              <div style="font-weight:600">${o.userName || '—'}</div>
+              <div style="font-size:.8rem;color:var(--muted)">${o.phone || ''}</div>
+            </td>
+            <td>${DB.formatDate(o.createdAt)}</td>
+            <td style="font-weight:600;color:var(--primary)">${DB.formatCurrency(o.total)}</td>
+            <td>${paymentLabel[o.paymentMethod] || o.paymentMethod || '—'}</td>
+            <td><span class="badge ${sl.cls}">${sl.label}</span></td>
+            <td>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <button class="btn btn-sm btn-outline" onclick="openOrderModal(${o.id})">Chi tiết</button>
+                ${STATUS_FLOW[o.status] ? `<button class="btn btn-sm ${STATUS_FLOW[o.status].btnClass}" onclick="advanceStatus(${o.id})">${STATUS_FLOW[o.status].label}</button>` : ''}
+                ${o.status === 'new' || o.status === 'processing' ? `<button class="btn btn-sm btn-danger" onclick="cancelOrder(${o.id})">Huỷ</button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function advanceStatus(id) {
+    const orders = DB.Orders.list();
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx < 0) return;
+    const flow = STATUS_FLOW[orders[idx].status];
+    if (!flow) return;
+    orders[idx].status = flow.next;
+    localStorage.setItem('lf_orders', JSON.stringify(orders));
+    DB.showToast(`Cập nhật trạng thái thành công`);
+    renderStats();
+    renderPage();
+  }
+
+  function cancelOrder(id) {
+    if (!confirm('Bạn có chắc muốn huỷ đơn hàng này?')) return;
+    const orders = DB.Orders.list();
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx < 0) return;
+    // Restore stock
+    const products = DB.Products.list();
+    (orders[idx].items || []).forEach(it => {
+      const pidx = products.findIndex(p => p.id === it.productId);
+      if (pidx >= 0) products[pidx].stock = (products[pidx].stock || 0) + it.qty;
+    });
+    localStorage.setItem('lf_products', JSON.stringify(products));
+    orders[idx].status = 'cancelled';
+    localStorage.setItem('lf_orders', JSON.stringify(orders));
+    DB.showToast('Đã huỷ đơn hàng & hoàn tồn kho');
+    renderStats();
+    renderPage();
+  }
+
+  function openOrderModal(id) {
+    const o = DB.Orders.list().find(x => x.id === id);
+    if (!o) return;
+    const sl = DB.statusLabel(o.status);
+    document.getElementById('orderModalTitle').textContent = `Đơn hàng #${String(o.id).slice(-6)}`;
+    document.getElementById('orderModalBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:.25rem">Khách hàng</div>
+          <strong>${o.userName || '—'}</strong><br/>
+          <span style="color:var(--muted)">${o.phone || ''}</span>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:.25rem">Địa chỉ giao hàng</div>
+          <span>${o.address || '—'}</span>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:.25rem">Thanh toán</div>
+          <span>${paymentLabel[o.paymentMethod] || o.paymentMethod || '—'}</span>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:.25rem">Trạng thái</div>
+          <span class="badge ${sl.cls}">${sl.label}</span>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:.25rem">Ngày đặt</div>
+          <span>${DB.formatDate(o.createdAt)}</span>
+        </div>
+      </div>
+      <hr style="margin-bottom:1.5rem;border-color:var(--border)"/>
+      <table class="admin-table">
+        <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+        <tbody>
+          ${(o.items||[]).map(it => `
+            <tr>
+              <td>${it.name}</td>
+              <td>${it.qty}</td>
+              <td>${DB.formatCurrency(it.price)}</td>
+              <td style="font-weight:600">${DB.formatCurrency(it.qty * it.price)}</td>
+            </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--bg)">
+            <td colspan="3" style="text-align:right;font-weight:600">Tổng cộng:</td>
+            <td style="font-weight:700;color:var(--primary)">${DB.formatCurrency(o.total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+    const footer = document.getElementById('orderModalFooter');
+    footer.innerHTML = `<button class="btn btn-outline" onclick="closeOrderModal()">Đóng</button>`;
+    if (STATUS_FLOW[o.status]) {
+      footer.innerHTML += `<button class="btn ${STATUS_FLOW[o.status].btnClass}" onclick="advanceStatus(${o.id});closeOrderModal()">${STATUS_FLOW[o.status].label}</button>`;
+    }
+    if (o.status === 'new' || o.status === 'processing') {
+      footer.innerHTML += `<button class="btn btn-danger" onclick="cancelOrder(${o.id});closeOrderModal()">Huỷ đơn</button>`;
+    }
+    document.getElementById('orderModal').classList.add('active');
+  }
+  function closeOrderModal() { document.getElementById('orderModal').classList.remove('active'); }
+  function closeOrderOutside(e) { if (e.target.id === 'orderModal') closeOrderModal(); }
+
+  renderStats();
+  renderPage();
+</script>
+</body>
+</html>

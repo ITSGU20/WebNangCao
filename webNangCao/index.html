@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Fleur Pâtisserie - Tiệm Bánh Ngọt</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="logo">La Fleur <span>Pâtisserie</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Trang chủ</a></li>
+    <li><a href="index.html#products">Sản phẩm</a></li>
+    <li><a href="search.html">Tìm kiếm</a></li>
+    <li><a href="index.html#footer">Liên hệ</a></li>
+  </ul>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-pattern"></div>
+  <div class="hero-content">
+    <div class="hero-tag">✦ Nghệ thuật bánh ngọt Pháp ✦</div>
+    <h1>Ngọt ngào từng<br>khoảnh khắc</h1>
+    <p class="hero-sub">Bánh tươi thủ công mỗi ngày — từ macaron Paris đến bánh kem sinh nhật, mỗi chiếc bánh là một tác phẩm nghệ thuật.</p>
+    <div class="hero-actions">
+      <a href="#products" class="btn btn-caramel btn-lg">🎂 Xem sản phẩm</a>
+      <a href="search.html" class="btn btn-outline btn-lg" style="border-color:rgba(255,255,255,0.6);color:white">🔍 Tìm kiếm</a>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURED ICONS -->
+<div style="background:var(--white);padding:1.5rem 2rem;border-bottom:1px solid var(--border)">
+  <div style="max-width:900px;margin:0 auto;display:flex;justify-content:space-around;flex-wrap:wrap;gap:1rem">
+    <div style="text-align:center;font-size:0.82rem;color:var(--gray)"><span style="font-size:1.8rem;display:block;margin-bottom:0.3rem">🌿</span>Nguyên liệu tự nhiên</div>
+    <div style="text-align:center;font-size:0.82rem;color:var(--gray)"><span style="font-size:1.8rem;display:block;margin-bottom:0.3rem">👨‍🍳</span>Thợ bánh chuyên nghiệp</div>
+    <div style="text-align:center;font-size:0.82rem;color:var(--gray)"><span style="font-size:1.8rem;display:block;margin-bottom:0.3rem">🚀</span>Giao hàng nhanh</div>
+    <div style="text-align:center;font-size:0.82rem;color:var(--gray)"><span style="font-size:1.8rem;display:block;margin-bottom:0.3rem">🎁</span>Đóng gói đẹp mắt</div>
+    <div style="text-align:center;font-size:0.82rem;color:var(--gray)"><span style="font-size:1.8rem;display:block;margin-bottom:0.3rem">⭐</span>5 sao đánh giá</div>
+  </div>
+</div>
+
+<!-- CATEGORY FILTER -->
+<div class="category-filter" id="category-filter">
+  <button class="cat-pill active" data-cat="0">✦ Tất cả</button>
+</div>
+
+<!-- PRODUCTS -->
+<section class="products-section" id="products">
+  <div class="section-header">
+    <div class="section-title">Sản phẩm nổi bật</div>
+    <a href="search.html" style="font-size:0.85rem;color:var(--caramel)">Xem tất cả →</a>
+  </div>
+  <div class="products-grid" id="products-grid"></div>
+  <div class="pagination" id="pagination"></div>
+</section>
+
+<!-- BANNER -->
+<div style="background:linear-gradient(135deg,var(--espresso),#7A4B2A);color:white;padding:4rem 2rem;text-align:center;margin-top:3rem">
+  <h2 style="font-family:var(--font-display);font-size:2.2rem;font-style:italic;margin-bottom:1rem">Đặt bánh sinh nhật theo yêu cầu</h2>
+  <p style="opacity:0.8;margin-bottom:1.5rem;max-width:500px;margin-left:auto;margin-right:auto">Từ 3–7 ngày trước sự kiện, chúng tôi tạo ra chiếc bánh hoàn hảo dành riêng cho bạn.</p>
+  <a href="search.html" class="btn btn-caramel btn-lg">Đặt hàng ngay</a>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer" id="footer">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a href="index.html" class="logo">La Fleur <span style="color:var(--caramel-light)">Pâtisserie</span></a>
+      <p>Tiệm bánh ngọt phong cách Pháp tại TP.HCM — Nơi nghệ thuật và hương vị gặp nhau.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Sản phẩm</h4>
+      <ul>
+        <li><a href="#">Bánh kem</a></li>
+        <li><a href="#">Bánh mì ngọt</a></li>
+        <li><a href="#">Bánh quy</a></li>
+        <li><a href="#">Macaron</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Hỗ trợ</h4>
+      <ul>
+        <li><a href="#">Về chúng tôi</a></li>
+        <li><a href="#">Chính sách giao hàng</a></li>
+        <li><a href="#">Đổi trả</a></li>
+        <li><a href="#">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Liên hệ</h4>
+      <ul>
+        <li><a href="#">📍 123 Lê Lợi, Q1, TP.HCM</a></li>
+        <li><a href="#">📞 0900 123 456</a></li>
+        <li><a href="#">✉️ hello@lafleur.vn</a></li>
+        <li><a href="#">🕐 7:00 - 21:00</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2024 La Fleur Pâtisserie. Tất cả quyền được bảo lưu.</div>
+</footer>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+  let currentCat = 0;
+  let currentPage = 1;
+
+  function init() {
+    DB.navbarUser();
+    renderCategories();
+    renderProducts();
+  }
+
+  function renderCategories() {
+    const container = document.getElementById('category-filter');
+    const cats = DB.Categories.active();
+    cats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-pill';
+      btn.dataset.cat = c.id;
+      btn.textContent = `${c.emoji} ${c.name}`;
+      btn.onclick = () => { currentCat = c.id; currentPage = 1; renderProducts(); setActivePill(c.id); };
+      container.appendChild(btn);
+    });
+    container.querySelectorAll('.cat-pill')[0].onclick = () => { currentCat = 0; currentPage = 1; renderProducts(); setActivePill(0); };
+  }
+
+  function setActivePill(catId) {
+    document.querySelectorAll('.cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat == catId));
+  }
+
+  function renderProducts() {
+    const allProds = currentCat ? DB.Products.byCategory(currentCat) : DB.Products.active();
+    const paged = DB.paginate(allProds, currentPage, 8);
+    const cats = DB.Categories.all();
+    const catMap = Object.fromEntries(cats.map(c => [c.id, c.name]));
+
+    const grid = document.getElementById('products-grid');
+    if (!paged.items.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥐</div><h3>Chưa có sản phẩm</h3><p>Sản phẩm đang được cập nhật.</p></div>';
+    } else {
+      grid.innerHTML = paged.items.map(p => DB.productCard(p, catMap[p.catId])).join('');
+    }
+
+    DB.renderPagination(document.getElementById('pagination'), paged, (p) => { currentPage = p; renderProducts(); window.scrollTo({top: document.getElementById('products').offsetTop - 80, behavior: 'smooth'}); });
+  }
+
+  init();
+</script>
+</body>
+</html>

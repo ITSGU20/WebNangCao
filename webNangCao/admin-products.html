@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý sản phẩm – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm tên, mã sản phẩm…" style="width:240px" oninput="renderTable()"/>
+          <select id="catFilter" class="form-control" style="width:200px" onchange="renderTable()">
+            <option value="">Tất cả danh mục</option>
+          </select>
+          <select id="statusFilter" class="form-control" style="width:160px" onchange="renderTable()">
+            <option value="">Tất cả</option>
+            <option value="active">Hiển thị</option>
+            <option value="hidden">Ẩn</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAddModal()" style="margin-left:auto">+ Thêm sản phẩm</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Sản phẩm</th>
+              <th>Mã SP</th>
+              <th>Danh mục</th>
+              <th>Giá bán</th>
+              <th>Giá vốn</th>
+              <th>Tồn kho</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="productModal" onclick="closeModalOutside(event)">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm sản phẩm</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Emoji</label>
+          <input type="text" id="editEmoji" class="form-control" placeholder="🎂" style="font-size:1.4rem;text-align:center"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mã sản phẩm *</label>
+          <input type="text" id="editCode" class="form-control" placeholder="BKSN001"/>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Tên sản phẩm *</label>
+          <input type="text" id="editName" class="form-control" placeholder="Bánh kem sinh nhật hoa hồng"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Danh mục *</label>
+          <select id="editCatId" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select id="editActive" class="form-control">
+            <option value="true">Hiển thị</option>
+            <option value="false">Ẩn</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giá bán (đ) *</label>
+          <input type="number" id="editPrice" class="form-control" placeholder="350000" min="0"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giá vốn (đ)</label>
+          <input type="number" id="editCostPrice" class="form-control" placeholder="200000" min="0"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tồn kho ban đầu</label>
+          <input type="number" id="editStock" class="form-control" placeholder="0" min="0"/>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Mô tả</label>
+          <textarea id="editDesc" class="form-control" rows="3" placeholder="Mô tả sản phẩm…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="modal-overlay" id="deleteModal" onclick="closeDeleteOutside(event)">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Xác nhận xoá</h3>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Bạn có chắc muốn xoá sản phẩm <strong id="deleteName"></strong>?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">Huỷ</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Xoá</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('products');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Quản lý sản phẩm');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 10;
+  let deleteTargetId = null;
+
+  function populateCategoryFilters() {
+    const cats = DB.Categories.list();
+    const catFilter = document.getElementById('catFilter');
+    const editCatId = document.getElementById('editCatId');
+    const options = cats.map(c => `<option value="${c.id}">${c.emoji || ''} ${c.name}</option>`).join('');
+    catFilter.innerHTML = '<option value="">Tất cả danh mục</option>' + options;
+    editCatId.innerHTML = '<option value="">-- Chọn danh mục --</option>' + options;
+  }
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const catId = document.getElementById('catFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    return DB.Products.list().filter(p => {
+      const matchSearch = !search || p.name.toLowerCase().includes(search) || (p.code||'').toLowerCase().includes(search);
+      const matchCat = !catId || String(p.catId) === catId;
+      const matchStatus = !status || (status === 'active' ? p.active !== false : p.active === false);
+      return matchSearch && matchCat && matchStatus;
+    });
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const cats = DB.Categories.list();
+    const filtered = getFiltered();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Không có sản phẩm nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(p => {
+        const cat = cats.find(c => c.id === p.catId);
+        const lowStock = p.stock <= 5;
+        return `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:.75rem">
+                <span style="font-size:1.8rem">${p.emoji || '🍰'}</span>
+                <strong>${p.name}</strong>
+              </div>
+            </td>
+            <td><code style="background:var(--bg);padding:.2rem .5rem;border-radius:4px">${p.code || '—'}</code></td>
+            <td>${cat ? cat.name : '—'}</td>
+            <td style="color:var(--primary);font-weight:600">${DB.formatCurrency(p.price)}</td>
+            <td style="color:var(--muted)">${p.costPrice ? DB.formatCurrency(p.costPrice) : '—'}</td>
+            <td><span class="badge ${lowStock ? 'badge-danger' : 'badge-secondary'}">${p.stock || 0}</span></td>
+            <td><span class="badge ${p.active !== false ? 'badge-success' : 'badge-danger'}">${p.active !== false ? 'Hiển thị' : 'Ẩn'}</span></td>
+            <td>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-sm btn-outline" onclick="openEditModal(${p.id})">Sửa</button>
+                <button class="btn btn-sm ${p.active !== false ? 'btn-outline' : 'btn-success'}" onclick="toggleActive(${p.id})">${p.active !== false ? 'Ẩn' : 'Hiện'}</button>
+                <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${p.id})">Xoá</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Thêm sản phẩm';
+    ['editId','editEmoji','editCode','editName','editDesc','editPrice','editCostPrice'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('editStock').value = '0';
+    document.getElementById('editCatId').value = '';
+    document.getElementById('editActive').value = 'true';
+    document.getElementById('productModal').classList.add('active');
+  }
+
+  function openEditModal(id) {
+    const p = DB.Products.list().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('modalTitle').textContent = 'Sửa sản phẩm';
+    document.getElementById('editId').value = p.id;
+    document.getElementById('editEmoji').value = p.emoji || '';
+    document.getElementById('editCode').value = p.code || '';
+    document.getElementById('editName').value = p.name;
+    document.getElementById('editDesc').value = p.desc || '';
+    document.getElementById('editPrice').value = p.price;
+    document.getElementById('editCostPrice').value = p.costPrice || '';
+    document.getElementById('editStock').value = p.stock || 0;
+    document.getElementById('editCatId').value = p.catId;
+    document.getElementById('editActive').value = String(p.active !== false);
+    document.getElementById('productModal').classList.add('active');
+  }
+
+  function closeModal() { document.getElementById('productModal').classList.remove('active'); }
+  function closeModalOutside(e) { if (e.target.id === 'productModal') closeModal(); }
+
+  function saveProduct() {
+    const id = document.getElementById('editId').value;
+    const emoji = document.getElementById('editEmoji').value.trim();
+    const code = document.getElementById('editCode').value.trim();
+    const name = document.getElementById('editName').value.trim();
+    const catId = parseInt(document.getElementById('editCatId').value);
+    const price = parseFloat(document.getElementById('editPrice').value);
+    const costPrice = parseFloat(document.getElementById('editCostPrice').value) || 0;
+    const stock = parseInt(document.getElementById('editStock').value) || 0;
+    const desc = document.getElementById('editDesc').value.trim();
+    const active = document.getElementById('editActive').value === 'true';
+
+    if (!name || !catId || !price) return DB.showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+
+    const products = DB.Products.list();
+    if (id) {
+      const idx = products.findIndex(p => p.id === parseInt(id));
+      if (idx >= 0) products[idx] = { ...products[idx], emoji, code, name, catId, price, costPrice, desc, active };
+    } else {
+      products.push({ id: Date.now(), emoji, code, name, catId, price, costPrice, stock, desc, active: true });
+    }
+    localStorage.setItem('lf_products', JSON.stringify(products));
+    DB.showToast(id ? 'Cập nhật sản phẩm thành công' : 'Thêm sản phẩm thành công');
+    closeModal();
+    renderPage();
+  }
+
+  function toggleActive(id) {
+    const products = DB.Products.list();
+    const idx = products.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      products[idx].active = products[idx].active === false ? true : false;
+      localStorage.setItem('lf_products', JSON.stringify(products));
+      DB.showToast(products[idx].active ? 'Đã hiện sản phẩm' : 'Đã ẩn sản phẩm');
+      renderPage();
+    }
+  }
+
+  function openDeleteModal(id) {
+    const p = DB.Products.list().find(x => x.id === id);
+    if (!p) return;
+    deleteTargetId = id;
+    document.getElementById('deleteName').textContent = p.name;
+    document.getElementById('deleteModal').classList.add('active');
+  }
+  function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); deleteTargetId = null; }
+  function closeDeleteOutside(e) { if (e.target.id === 'deleteModal') closeDeleteModal(); }
+
+  function confirmDelete() {
+    const products = DB.Products.list().filter(p => p.id !== deleteTargetId);
+    localStorage.setItem('lf_products', JSON.stringify(products));
+    DB.showToast('Đã xoá sản phẩm');
+    closeDeleteModal();
+    renderPage();
+  }
+
+  populateCategoryFilters();
+  renderPage();
+</script>
+</body>
+</html>

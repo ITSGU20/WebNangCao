@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản lý danh mục – La Fleur Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="admin-body">
+<script src="data.js"></script>
+<script src="admin.js"></script>
+
+<div class="admin-layout">
+  <div id="sidebar-container"></div>
+  <div class="admin-main">
+    <div id="topbar-container"></div>
+    <div class="admin-content">
+
+      <div class="filter-bar card" style="margin-bottom:1.5rem">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm tên danh mục…" style="width:260px" oninput="renderTable()"/>
+          <select id="statusFilter" class="form-control" style="width:160px" onchange="renderTable()">
+            <option value="">Tất cả</option>
+            <option value="active">Hiển thị</option>
+            <option value="hidden">Ẩn</option>
+          </select>
+          <button class="btn btn-primary" onclick="openAddModal()" style="margin-left:auto">+ Thêm danh mục</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Emoji</th>
+              <th>Tên danh mục</th>
+              <th>Mô tả</th>
+              <th>Số sản phẩm</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="paginationContainer" style="padding:1rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="catModal" onclick="closeModalOutside(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm danh mục</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId"/>
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input type="text" id="editEmoji" class="form-control" placeholder="🎂" style="width:80px;font-size:1.5rem;text-align:center"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tên danh mục *</label>
+        <input type="text" id="editName" class="form-control" placeholder="Bánh kem sinh nhật"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả</label>
+        <textarea id="editDesc" class="form-control" rows="3" placeholder="Mô tả ngắn về danh mục…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select id="editActive" class="form-control">
+          <option value="true">Hiển thị</option>
+          <option value="false">Ẩn</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveCategory()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="modal-overlay" id="deleteModal" onclick="closeDeleteOutside(event)">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Xác nhận xoá</h3>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Bạn có chắc muốn xoá danh mục <strong id="deleteName"></strong>?</p>
+      <p style="color:var(--muted);margin-top:.5rem;font-size:.9rem">Các sản phẩm thuộc danh mục này sẽ không còn danh mục.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">Huỷ</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Xoá</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  AdminLayout.guard();
+  document.getElementById('sidebar-container').innerHTML = AdminLayout.sidebar('categories');
+  document.getElementById('topbar-container').innerHTML = AdminLayout.topbar('Quản lý danh mục');
+
+  let currentPage = 1;
+  const PAGE_SIZE = 10;
+  let deleteTargetId = null;
+
+  function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    return DB.Categories.list().filter(c => {
+      const matchSearch = !search || c.name.toLowerCase().includes(search);
+      const matchStatus = !status || (status === 'active' ? c.active !== false : c.active === false);
+      return matchSearch && matchStatus;
+    });
+  }
+
+  function renderTable() { currentPage = 1; renderPage(); }
+
+  function renderPage() {
+    const filtered = getFiltered();
+    const products = DB.Products.list();
+    const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
+    const tbody = document.getElementById('tableBody');
+    if (paged.items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Không có danh mục nào</td></tr>';
+    } else {
+      tbody.innerHTML = paged.items.map(c => {
+        const count = products.filter(p => p.catId === c.id).length;
+        return `
+          <tr>
+            <td style="font-size:1.8rem">${c.emoji || '📦'}</td>
+            <td><strong>${c.name}</strong></td>
+            <td style="color:var(--muted)">${c.desc || '—'}</td>
+            <td><span class="badge badge-secondary">${count} sản phẩm</span></td>
+            <td><span class="badge ${c.active !== false ? 'badge-success' : 'badge-danger'}">${c.active !== false ? 'Hiển thị' : 'Ẩn'}</span></td>
+            <td>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-sm btn-outline" onclick="openEditModal(${c.id})">Sửa</button>
+                <button class="btn btn-sm ${c.active !== false ? 'btn-outline' : 'btn-success'}" onclick="toggleActive(${c.id})">${c.active !== false ? 'Ẩn' : 'Hiện'}</button>
+                <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${c.id})">Xoá</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
+  }
+
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Thêm danh mục';
+    document.getElementById('editId').value = '';
+    document.getElementById('editEmoji').value = '';
+    document.getElementById('editName').value = '';
+    document.getElementById('editDesc').value = '';
+    document.getElementById('editActive').value = 'true';
+    document.getElementById('catModal').classList.add('active');
+  }
+
+  function openEditModal(id) {
+    const c = DB.Categories.list().find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('modalTitle').textContent = 'Sửa danh mục';
+    document.getElementById('editId').value = c.id;
+    document.getElementById('editEmoji').value = c.emoji || '';
+    document.getElementById('editName').value = c.name;
+    document.getElementById('editDesc').value = c.desc || '';
+    document.getElementById('editActive').value = String(c.active !== false);
+    document.getElementById('catModal').classList.add('active');
+  }
+
+  function closeModal() { document.getElementById('catModal').classList.remove('active'); }
+  function closeModalOutside(e) { if (e.target.id === 'catModal') closeModal(); }
+
+  function saveCategory() {
+    const id = document.getElementById('editId').value;
+    const emoji = document.getElementById('editEmoji').value.trim();
+    const name = document.getElementById('editName').value.trim();
+    const desc = document.getElementById('editDesc').value.trim();
+    const active = document.getElementById('editActive').value === 'true';
+    if (!name) return DB.showToast('Vui lòng nhập tên danh mục', 'error');
+
+    const cats = DB.Categories.list();
+    if (id) {
+      const idx = cats.findIndex(c => c.id === parseInt(id));
+      if (idx >= 0) { cats[idx] = { ...cats[idx], emoji, name, desc, active }; }
+    } else {
+      cats.push({ id: Date.now(), emoji, name, desc, active: true });
+    }
+    localStorage.setItem('lf_categories', JSON.stringify(cats));
+    DB.showToast(id ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công');
+    closeModal();
+    renderPage();
+  }
+
+  function toggleActive(id) {
+    const cats = DB.Categories.list();
+    const idx = cats.findIndex(c => c.id === id);
+    if (idx >= 0) {
+      cats[idx].active = cats[idx].active === false ? true : false;
+      localStorage.setItem('lf_categories', JSON.stringify(cats));
+      DB.showToast(cats[idx].active ? 'Đã hiện danh mục' : 'Đã ẩn danh mục');
+      renderPage();
+    }
+  }
+
+  function openDeleteModal(id) {
+    const c = DB.Categories.list().find(x => x.id === id);
+    if (!c) return;
+    deleteTargetId = id;
+    document.getElementById('deleteName').textContent = c.name;
+    document.getElementById('deleteModal').classList.add('active');
+  }
+  function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); deleteTargetId = null; }
+  function closeDeleteOutside(e) { if (e.target.id === 'deleteModal') closeDeleteModal(); }
+
+  function confirmDelete() {
+    const cats = DB.Categories.list().filter(c => c.id !== deleteTargetId);
+    localStorage.setItem('lf_categories', JSON.stringify(cats));
+    DB.showToast('Đã xoá danh mục');
+    closeDeleteModal();
+    renderPage();
+  }
+
+  renderPage();
+</script>
+</body>
+</html>

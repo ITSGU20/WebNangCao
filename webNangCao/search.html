@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tìm kiếm sản phẩm - La Fleur Pâtisserie</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="logo">La Fleur <span>Pâtisserie</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="index.html#products">Sản phẩm</a></li>
+    <li><a href="search.html" class="active">Tìm kiếm</a></li>
+  </ul>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div style="background:linear-gradient(135deg,var(--espresso),var(--chocolate));color:white;padding:2.5rem 2rem;text-align:center">
+  <h1 style="font-family:var(--font-display);font-size:2.2rem;font-style:italic;margin-bottom:0.5rem">Tìm kiếm sản phẩm</h1>
+  <p style="opacity:0.75;font-size:0.95rem">Khám phá hàng trăm loại bánh ngọt tuyệt vời</p>
+</div>
+
+<div style="max-width:1200px;margin:0 auto;padding:2.5rem 2rem">
+  <!-- Search Panel -->
+  <div class="card mb-4">
+    <!-- Basic Search -->
+    <div style="display:flex;gap:0.8rem;align-items:center;margin-bottom:1rem">
+      <div class="search-wrap" style="flex:1">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Tìm theo tên sản phẩm..." oninput="searchProducts()">
+      </div>
+      <button class="btn btn-primary" onclick="searchProducts()">Tìm kiếm</button>
+      <button class="btn btn-secondary" onclick="toggleAdvanced()" id="adv-toggle">⚙️ Nâng cao</button>
+    </div>
+
+    <!-- Advanced Search -->
+    <div id="advanced-panel" style="display:none;padding-top:1rem;border-top:1px solid var(--border)">
+      <p style="font-size:0.83rem;color:var(--gray);margin-bottom:1rem">🔎 Tìm kiếm nâng cao — kết hợp nhiều tiêu chí</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1rem;align-items:end;flex-wrap:wrap">
+        <div class="form-group mb-0">
+          <label class="form-label">Tên sản phẩm</label>
+          <input type="text" class="form-control" id="adv-name" placeholder="Nhập tên...">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Loại sản phẩm</label>
+          <select class="form-control" id="adv-cat">
+            <option value="">-- Tất cả loại --</option>
+          </select>
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Giá từ (đ)</label>
+          <input type="number" class="form-control" id="adv-min" placeholder="0">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Giá đến (đ)</label>
+          <input type="number" class="form-control" id="adv-max" placeholder="Không giới hạn">
+        </div>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:0.8rem">
+        <button class="btn btn-caramel" onclick="doAdvancedSearch()">🔍 Tìm kiếm</button>
+        <button class="btn btn-secondary" onclick="resetSearch()">↺ Đặt lại</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="flex-between mb-3">
+    <div id="result-count" style="font-size:0.88rem;color:var(--gray)"></div>
+    <select class="form-control" id="sort-select" onchange="sortResults()" style="width:auto;padding:0.4rem 1.5rem 0.4rem 0.8rem;font-size:0.83rem">
+      <option value="default">Mặc định</option>
+      <option value="price-asc">Giá: Thấp → Cao</option>
+      <option value="price-desc">Giá: Cao → Thấp</option>
+      <option value="name-asc">Tên: A → Z</option>
+    </select>
+  </div>
+
+  <div class="products-grid" id="results-grid"></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<div id="toast"></div>
+<script src="data.js"></script>
+<script>
+  let allResults = [];
+  let currentPage = 1;
+
+  function init() {
+    DB.navbarUser();
+    // Fill category select
+    const catSel = document.getElementById('adv-cat');
+    DB.Categories.active().forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.emoji} ${c.name}`;
+      catSel.appendChild(opt);
+    });
+    // Check URL params
+    const params = new URLSearchParams(location.search);
+    const q = params.get('q') || '';
+    if (q) document.getElementById('search-input').value = q;
+    searchProducts();
+  }
+
+  function searchProducts() {
+    const q = document.getElementById('search-input').value.trim();
+    allResults = DB.Products.search(q);
+    currentPage = 1;
+    renderResults();
+  }
+
+  function doAdvancedSearch() {
+    const name = document.getElementById('adv-name').value.trim();
+    const catId = document.getElementById('adv-cat').value;
+    const min = document.getElementById('adv-min').value ? +document.getElementById('adv-min').value : null;
+    const max = document.getElementById('adv-max').value ? +document.getElementById('adv-max').value : null;
+    allResults = DB.Products.search(name, catId || null, min, max);
+    currentPage = 1;
+    renderResults();
+  }
+
+  function sortResults() {
+    const sort = document.getElementById('sort-select').value;
+    if (sort === 'price-asc') allResults.sort((a,b) => a.price - b.price);
+    else if (sort === 'price-desc') allResults.sort((a,b) => b.price - a.price);
+    else if (sort === 'name-asc') allResults.sort((a,b) => a.name.localeCompare(b.name));
+    renderResults();
+  }
+
+  function renderResults() {
+    const catMap = Object.fromEntries(DB.Categories.all().map(c => [c.id, c.name]));
+    const paged = DB.paginate(allResults, currentPage, 8);
+    document.getElementById('result-count').textContent = `Tìm thấy ${allResults.length} sản phẩm`;
+    const grid = document.getElementById('results-grid');
+    if (!paged.items.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>Không tìm thấy sản phẩm</h3><p>Thử tìm với từ khóa khác.</p><a href="search.html" class="btn btn-caramel">Xem tất cả</a></div>';
+    } else {
+      grid.innerHTML = paged.items.map(p => DB.productCard(p, catMap[p.catId])).join('');
+    }
+    DB.renderPagination(document.getElementById('pagination'), paged, (p) => { currentPage = p; renderResults(); window.scrollTo({top:200,behavior:'smooth'}); });
+  }
+
+  function toggleAdvanced() {
+    const panel = document.getElementById('advanced-panel');
+    const btn = document.getElementById('adv-toggle');
+    if (panel.style.display === 'none') { panel.style.display = 'block'; btn.textContent = '▲ Thu gọn'; }
+    else { panel.style.display = 'none'; btn.textContent = '⚙️ Nâng cao'; }
+  }
+
+  function resetSearch() {
+    document.getElementById('adv-name').value = '';
+    document.getElementById('adv-cat').value = '';
+    document.getElementById('adv-min').value = '';
+    document.getElementById('adv-max').value = '';
+    searchProducts();
+  }
+
+  init();
+</script>
+</body>
+</html>

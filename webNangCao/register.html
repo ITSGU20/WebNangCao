@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng ký - La Fleur Pâtisserie</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card" style="max-width:500px">
+    <div class="auth-header">
+      <a href="index.html" class="logo">La Fleur Pâtisserie</a>
+      <p>Tạo tài khoản mới</p>
+    </div>
+    <div class="auth-body">
+      <div id="error-msg" class="alert alert-danger" style="display:none"></div>
+      <div id="success-msg" class="alert alert-success" style="display:none"></div>
+      <form id="register-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Họ và tên *</label>
+            <input type="text" class="form-control" id="name" placeholder="Nguyễn Văn A" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số điện thoại *</label>
+            <input type="tel" class="form-control" id="phone" placeholder="0901234567" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" id="email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Địa chỉ</label>
+          <input type="text" class="form-control" id="address" placeholder="123 Đường ABC, Quận 1, TP.HCM">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Mật khẩu *</label>
+            <input type="password" class="form-control" id="password" placeholder="••••••••" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nhập lại mật khẩu *</label>
+            <input type="password" class="form-control" id="confirm" placeholder="••••••••" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg mt-2">Đăng ký</button>
+      </form>
+    </div>
+    <div class="auth-footer">
+      Đã có tài khoản? <a href="login.html">Đăng nhập</a>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="data.js"></script>
+<script>
+  if (DB.Auth.isLoggedIn()) location.href = 'index.html';
+
+  document.getElementById('register-form').onsubmit = (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm').value;
+    const errEl = document.getElementById('error-msg');
+
+    if (password !== confirm) {
+      errEl.textContent = 'Mật khẩu nhập lại không khớp.';
+      errEl.style.display = 'flex'; return;
+    }
+    if (password.length < 6) {
+      errEl.textContent = 'Mật khẩu phải có ít nhất 6 ký tự.';
+      errEl.style.display = 'flex'; return;
+    }
+    errEl.style.display = 'none';
+    const result = DB.Auth.register({ name, phone, email, address, password });
+    if (result.ok) {
+      document.getElementById('success-msg').textContent = '🎉 Đăng ký thành công! Đang chuyển hướng...';
+      document.getElementById('success-msg').style.display = 'flex';
+      setTimeout(() => { DB.Auth.login(email, password); location.href = 'index.html'; }, 1200);
+    } else {
+      errEl.textContent = result.msg;
+      errEl.style.display = 'flex';
+    }
+  };
+</script>
+</body>
+</html>

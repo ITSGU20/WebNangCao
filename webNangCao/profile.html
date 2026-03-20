@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tài khoản của tôi - La Fleur Pâtisserie</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="logo">La Fleur <span>Pâtisserie</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Trang chủ</a></li>
+    <li><a href="index.html#products">Sản phẩm</a></li>
+    <li><a href="search.html">Tìm kiếm</a></li>
+  </ul>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div style="max-width:800px;margin:3rem auto;padding:0 2rem">
+  <div style="display:flex;gap:2rem;flex-wrap:wrap">
+    <!-- Sidebar -->
+    <div style="width:200px;flex-shrink:0">
+      <div class="card card-sm" style="padding:1.5rem">
+        <div style="text-align:center;margin-bottom:1.2rem">
+          <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--caramel-light),var(--rose-light));margin:0 auto 0.8rem;display:flex;align-items:center;justify-content:center;font-size:2rem">👤</div>
+          <div id="sidebar-name" style="font-weight:600;font-size:0.9rem;color:var(--espresso)"></div>
+          <div id="sidebar-email" style="font-size:0.75rem;color:var(--gray)"></div>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:0.3rem">
+          <a href="profile.html" style="padding:0.6rem 0.8rem;border-radius:var(--radius-sm);background:var(--gray-light);color:var(--chocolate);font-size:0.85rem;font-weight:600">👤 Hồ sơ</a>
+          <a href="orders.html" style="padding:0.6rem 0.8rem;border-radius:var(--radius-sm);color:var(--gray);font-size:0.85rem">📦 Đơn hàng</a>
+          <a href="cart.html" style="padding:0.6rem 0.8rem;border-radius:var(--radius-sm);color:var(--gray);font-size:0.85rem">🛒 Giỏ hàng</a>
+          <button onclick="DB.Auth.logout();location.href='index.html'" style="padding:0.6rem 0.8rem;border-radius:var(--radius-sm);color:#C0392B;font-size:0.85rem;background:none;border:none;text-align:left;cursor:pointer">🚪 Đăng xuất</button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div style="flex:1;min-width:0">
+      <div class="card">
+        <h2 style="font-family:var(--font-display);font-size:1.5rem;color:var(--chocolate);margin-bottom:0.3rem">Thông tin cá nhân</h2>
+        <p class="text-muted mb-4">Cập nhật thông tin tài khoản của bạn</p>
+
+        <div id="alert-msg" style="display:none" class="alert"></div>
+
+        <form id="profile-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Họ và tên</label>
+              <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số điện thoại</label>
+              <input type="tel" class="form-control" id="phone">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Địa chỉ giao hàng</label>
+            <textarea class="form-control" id="address" rows="2" placeholder="Số nhà, tên đường, quận/huyện, tỉnh/thành"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">💾 Lưu thay đổi</button>
+        </form>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0">
+
+        <h3 style="font-family:var(--font-display);font-size:1.2rem;color:var(--chocolate);margin-bottom:1.2rem">Đổi mật khẩu</h3>
+        <form id="password-form">
+          <div class="form-group">
+            <label class="form-label">Mật khẩu hiện tại</label>
+            <input type="password" class="form-control" id="old-pass" placeholder="••••••••">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Mật khẩu mới</label>
+              <input type="password" class="form-control" id="new-pass" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nhập lại</label>
+              <input type="password" class="form-control" id="confirm-pass" placeholder="••••••••">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline">🔒 Đổi mật khẩu</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="data.js"></script>
+<script>
+  if (!DB.Auth.requireLogin()) {}
+  const user = DB.Auth.current();
+
+  document.getElementById('sidebar-name').textContent = user.name;
+  document.getElementById('sidebar-email').textContent = user.email;
+  document.getElementById('name').value = user.name;
+  document.getElementById('phone').value = user.phone || '';
+  document.getElementById('email').value = user.email;
+  document.getElementById('address').value = user.address || '';
+
+  DB.navbarUser();
+
+  document.getElementById('profile-form').onsubmit = (e) => {
+    e.preventDefault();
+    DB.Auth.updateProfile(user.id, {
+      name: document.getElementById('name').value.trim(),
+      phone: document.getElementById('phone').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      address: document.getElementById('address').value.trim(),
+    });
+    showMsg('✅ Cập nhật thông tin thành công!', 'success');
+    document.getElementById('sidebar-name').textContent = document.getElementById('name').value.trim();
+  };
+
+  document.getElementById('password-form').onsubmit = (e) => {
+    e.preventDefault();
+    const oldPass = document.getElementById('old-pass').value;
+    const newPass = document.getElementById('new-pass').value;
+    const confirmPass = document.getElementById('confirm-pass').value;
+    if (oldPass !== user.password) { showMsg('Mật khẩu hiện tại không đúng.', 'danger'); return; }
+    if (newPass.length < 6) { showMsg('Mật khẩu mới phải có ít nhất 6 ký tự.', 'danger'); return; }
+    if (newPass !== confirmPass) { showMsg('Mật khẩu nhập lại không khớp.', 'danger'); return; }
+    DB.Auth.updateProfile(user.id, { password: newPass });
+    showMsg('🔒 Đổi mật khẩu thành công!', 'success');
+    document.getElementById('password-form').reset();
+  };
+
+  function showMsg(msg, type) {
+    const el = document.getElementById('alert-msg');
+    el.textContent = msg;
+    el.className = `alert alert-${type}`;
+    el.style.display = 'flex';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+</script>
+</body>
+</html>
