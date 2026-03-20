@@ -97,7 +97,7 @@
       <ul>
         <li><a href="#">📍 123 Lê Lợi, Q1, TP.HCM</a></li>
         <li><a href="#">📞 0900 123 456</a></li>
-        <li><a href="#">✉️ hello@lafleur.vn</a></li>
+        <li><a href="#">✉️ <span class="__cf_email__" data-cfemail="563e333a3a39163a37303a332324782038">[email&#160;protected]</span></a></li>
         <li><a href="#">🕐 7:00 - 21:00</a></li>
       </ul>
     </div>
@@ -107,7 +107,7 @@
 
 <div id="toast"></div>
 
-<script src="data.js"></script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="data.js"></script>
 <script>
   let currentCat = 0;
   let currentPage = 1;
@@ -149,7 +149,11 @@
       grid.innerHTML = paged.items.map(p => DB.productCard(p, catMap[p.catId])).join('');
     }
 
-    DB.renderPagination(document.getElementById('pagination'), paged, (p) => { currentPage = p; renderProducts(); window.scrollTo({top: document.getElementById('products').offsetTop - 80, behavior: 'smooth'}); });
+    DB.renderPagination(document.getElementById('pagination'), paged, (p) => {
+      currentPage = p;
+      renderProducts();
+      window.scrollTo({ top: document.getElementById('products').offsetTop - 80, behavior: 'smooth' });
+    });
   }
 
   init();

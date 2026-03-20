@@ -43,7 +43,7 @@ const DB = (() => {
     ];
 
     const imports = [
-      { id: 1, date: '2024-11-01', items: [{productId:1, qty:20, costPrice:90000}, {productId:2, qty:15, costPrice:110000}], status: 'done', createdAt: '2024-11-01' },
+      { id: 1, date: '2024-11-01', items: [{productId:1, qty:20, costPrice:90000}, {productId:2, qty:15, costPrice:110000}], status: 'completed', createdAt: '2024-11-01' },
       { id: 2, date: '2024-11-10', items: [{productId:5, qty:100, costPrice:18000}, {productId:6, qty:60, costPrice:25000}], status: 'pending', createdAt: '2024-11-10' },
     ];
 
@@ -102,7 +102,8 @@ const DB = (() => {
   // ---- CATEGORIES ----
   const Categories = {
     all() { return load('lf_categories'); },
-    active() { return this.all().filter(c => c.active); },
+    list() { return this.all(); },
+    active() { return this.all().filter(c => c.active !== false); },
     get(id) { return this.all().find(c => c.id == id); },
     save(data) {
       const cats = load('lf_categories');
@@ -130,7 +131,8 @@ const DB = (() => {
   // ---- PRODUCTS ----
   const Products = {
     all() { return load('lf_products'); },
-    active() { return this.all().filter(p => p.active); },
+    list() { return this.all(); },
+    active() { return this.all().filter(p => p.active !== false); },
     get(id) { return this.all().find(p => p.id == id); },
     byCategory(catId) { return this.active().filter(p => p.catId == catId); },
     search(query, catId = null, minPrice = null, maxPrice = null) {
@@ -170,6 +172,7 @@ const DB = (() => {
   // ---- USERS ----
   const Users = {
     all() { return load('lf_users').filter(u => u.role !== 'admin'); },
+    list() { return load('lf_users'); },
     get(id) { return load('lf_users').find(u => u.id == id); },
     resetPassword(id) {
       const users = load('lf_users');
@@ -186,6 +189,7 @@ const DB = (() => {
   // ---- ORDERS ----
   const Orders = {
     all() { return load('lf_orders'); },
+    list() { return this.all(); },
     get(id) { return this.all().find(o => o.id == id); },
     byUser(userId) { return this.all().filter(o => o.userId == userId); },
     place(orderData) {
@@ -246,6 +250,7 @@ const DB = (() => {
   // ---- IMPORTS ----
   const Imports = {
     all() { return load('lf_imports'); },
+    list() { return this.all(); },
     get(id) { return this.all().find(i => i.id == id); },
     save(data) {
       const imports = load('lf_imports');
@@ -265,7 +270,7 @@ const DB = (() => {
       const imports = load('lf_imports');
       const idx = imports.findIndex(i => i.id == id);
       if (idx !== -1 && imports[idx].status === 'pending') {
-        imports[idx].status = 'done';
+        imports[idx].status = 'completed';
         imports[idx].doneAt = today();
         save('lf_imports', imports);
         // Update stock & cost prices
@@ -289,19 +294,30 @@ const DB = (() => {
   }
 
   function formatDate(d) {
-    if (!d) return '-';
-    const [y, m, day] = d.split('-');
-    return `${day}/${m}/${y}`;
+    if (!d) return '—';
+    try {
+      const date = new Date(d);
+      if (!isNaN(date)) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+    } catch {}
+    // Fallback: parse YYYY-MM-DD string manually
+    const parts = d.split('T')[0].split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return d;
   }
 
   function statusLabel(status) {
     const map = {
-      new: { text: 'Mới đặt', cls: 'badge-info' },
-      processing: { text: 'Đang xử lý', cls: 'badge-warning' },
-      delivered: { text: 'Đã giao', cls: 'badge-success' },
-      cancelled: { text: 'Đã hủy', cls: 'badge-danger' },
+      new:        { text: 'Mới đặt',     label: 'Mới đặt',     cls: 'badge-info' },
+      processing: { text: 'Đang xử lý',  label: 'Đang xử lý',  cls: 'badge-warning' },
+      delivered:  { text: 'Đã giao',     label: 'Đã giao',     cls: 'badge-success' },
+      cancelled:  { text: 'Đã hủy',      label: 'Đã hủy',      cls: 'badge-danger' },
     };
-    return map[status] || { text: status, cls: 'badge-secondary' };
+    return map[status] || { text: status, label: status, cls: 'badge-secondary' };
   }
 
   function showToast(msg, type = 'info') {
@@ -325,26 +341,34 @@ const DB = (() => {
     return { items, total, page, perPage, count: arr.length };
   }
 
-  function renderPagination(container, paged, onPage) {
-    container.innerHTML = '';
-    if (paged.total <= 1) return;
-    const prev = document.createElement('button');
-    prev.className = 'pg-btn'; prev.textContent = '‹';
-    prev.disabled = paged.page === 1;
-    prev.onclick = () => onPage(paged.page - 1);
-    container.appendChild(prev);
-    for (let i = 1; i <= paged.total; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'pg-btn' + (i === paged.page ? ' active' : '');
-      btn.textContent = i;
-      btn.onclick = () => onPage(i);
-      container.appendChild(btn);
+  function renderPagination(first, second, third) {
+    // Detect call signature:
+    // Admin pages:    renderPagination(paged, onPage)       → returns HTML string
+    // Customer pages: renderPagination(container, paged, onPage) → writes to DOM
+    const isDomElement = first && typeof first === 'object' && first.nodeType === 1;
+
+    let container, paged, onPage;
+    if (isDomElement) {
+      container = first; paged = second; onPage = third;
+    } else {
+      paged = first; onPage = second;
     }
-    const next = document.createElement('button');
-    next.className = 'pg-btn'; next.textContent = '›';
-    next.disabled = paged.page === paged.total;
-    next.onclick = () => onPage(paged.page + 1);
-    container.appendChild(next);
+
+    if (paged.total <= 1) {
+      if (isDomElement) { container.innerHTML = ''; return; }
+      return '';
+    }
+
+    let html = '<div class="pagination">';
+    html += `<button class="pg-btn" ${paged.page === 1 ? 'disabled' : ''} onclick="(${onPage.toString()})(${paged.page - 1})">‹</button>`;
+    for (let i = 1; i <= paged.total; i++) {
+      html += `<button class="pg-btn${i === paged.page ? ' active' : ''}" onclick="(${onPage.toString()})(${i})">${i}</button>`;
+    }
+    html += `<button class="pg-btn" ${paged.page === paged.total ? 'disabled' : ''} onclick="(${onPage.toString()})(${paged.page + 1})">›</button>`;
+    html += '</div>';
+
+    if (isDomElement) { container.innerHTML = html; return; }
+    return html;
   }
 
   function productCard(p, catName) {

@@ -247,7 +247,7 @@
     const products = DB.Products.list();
     if (id) {
       const idx = products.findIndex(p => p.id === parseInt(id));
-      if (idx >= 0) products[idx] = { ...products[idx], emoji, code, name, catId, price, costPrice, desc, active };
+      if (idx >= 0) products[idx] = { ...products[idx], emoji, code, name, catId, price, costPrice, stock, desc, active };
     } else {
       products.push({ id: Date.now(), emoji, code, name, catId, price, costPrice, stock, desc, active: true });
     }
