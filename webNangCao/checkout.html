@@ -34,7 +34,7 @@
         <!-- Address -->
         <div class="card mb-3">
           <h3 style="font-family:var(--font-display);font-size:1.3rem;color:var(--chocolate);margin-bottom:1.2rem">📍 Địa chỉ giao hàng</h3>
-          
+
           <div style="margin-bottom:1rem">
             <div style="font-size:0.83rem;font-weight:600;color:var(--chocolate);margin-bottom:0.6rem">Chọn địa chỉ:</div>
             <div id="address-options" class="radio-group"></div>
@@ -62,12 +62,14 @@
                   <option>Quận 1</option><option>Quận 2</option><option>Quận 3</option>
                   <option>Quận 4</option><option>Quận 5</option><option>Quận 7</option>
                   <option>Bình Thạnh</option><option>Gò Vấp</option><option>Tân Bình</option>
+                  <option>Tân Phú</option><option>Phú Nhuận</option><option>Bình Chánh</option>
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Tỉnh/Thành</label>
                 <select class="form-control" id="recv-city">
                   <option>TP.HCM</option><option>Hà Nội</option><option>Đà Nẵng</option>
+                  <option>Cần Thơ</option><option>Hải Phòng</option>
                 </select>
               </div>
             </div>
@@ -95,7 +97,7 @@
               <span style="font-size:1.3rem">🏦</span>
               <div>
                 <div style="font-weight:600;font-size:0.9rem">Chuyển khoản ngân hàng</div>
-                <div style="font-size:0.75rem;color:var(--gray)">Vietcombank / MB Bank / Techcombank</div>
+                <div style="font-size:0.75rem;color:var(--gray)">Vietcombank • MB Bank • Techcombank</div>
               </div>
             </label>
             <label class="radio-item" onclick="selectPayment(this,'online')">
@@ -106,6 +108,15 @@
                 <div style="font-size:0.75rem;color:var(--gray)">MoMo / ZaloPay / VNPay / Thẻ tín dụng</div>
               </div>
             </label>
+          </div>
+
+          <!-- Bank transfer info (show when 'transfer' selected) -->
+          <div id="transfer-info" style="display:none;margin-top:1rem;background:var(--gray-light);border-radius:var(--radius-sm);padding:1rem;font-size:.85rem">
+            <div style="font-weight:600;margin-bottom:.5rem;color:var(--chocolate)">🏦 Thông tin chuyển khoản:</div>
+            <div>Ngân hàng: <strong>Vietcombank</strong></div>
+            <div>Số tài khoản: <strong>1234567890</strong></div>
+            <div>Chủ tài khoản: <strong>CONG TY TNHH LA FLEUR</strong></div>
+            <div style="margin-top:.4rem;color:var(--rose)">Nội dung CK: <strong>LAFLEUR + Tên + SĐT</strong></div>
           </div>
         </div>
       </div>
@@ -154,6 +165,7 @@
 <script src="data.js"></script>
 <script>
   if (!DB.Auth.requireLogin('login.html?redirect=checkout.html')) {}
+
   let selectedPayment = 'cash';
   let useAccountAddress = true;
   const user = DB.Auth.current();
@@ -176,7 +188,11 @@
       <input type="radio" name="addr" ${!user.address ? 'checked' : ''}>
       <div style="font-size:0.85rem;font-weight:600">➕ Nhập địa chỉ giao hàng mới</div></label>`;
     opts.innerHTML = html;
-    if (!user.address) { useAccountAddress = false; document.getElementById('new-address-form').style.display = 'block'; }
+
+    if (!user.address) {
+      useAccountAddress = false;
+      document.getElementById('new-address-form').style.display = 'block';
+    }
     if (user.name) document.getElementById('recv-name').value = user.name;
     if (user.phone) document.getElementById('recv-phone').value = user.phone;
 
@@ -194,12 +210,16 @@
     document.querySelectorAll('#payment-methods .radio-item').forEach(r => r.classList.remove('selected'));
     el.classList.add('selected');
     selectedPayment = method;
+    document.getElementById('transfer-info').style.display = method === 'transfer' ? 'block' : 'none';
   }
 
   function renderItems(items) {
     const total = DB.Cart.total();
     document.getElementById('order-items').innerHTML = items.map(i => `
-      <div class="summary-row"><span style="flex:1;font-size:0.82rem">${i.emoji} ${i.name} × ${i.qty}</span><span style="white-space:nowrap">${DB.formatCurrency(i.price * i.qty)}</span></div>`).join('');
+      <div class="summary-row">
+        <span style="flex:1;font-size:0.82rem">${i.emoji || ''} ${i.name} × ${i.qty}</span>
+        <span style="white-space:nowrap">${DB.formatCurrency(i.price * i.qty)}</span>
+      </div>`).join('');
     document.getElementById('subtotal2').textContent = DB.formatCurrency(total);
     document.getElementById('total2').textContent = DB.formatCurrency(total);
   }
@@ -207,7 +227,12 @@
   function placeOrder() {
     let address, phone, name;
     const errEl = document.getElementById('order-error');
+
     if (useAccountAddress) {
+      if (!user.address) {
+        errEl.textContent = 'Tài khoản chưa có địa chỉ. Vui lòng nhập địa chỉ mới.';
+        errEl.style.display = 'flex'; return;
+      }
       address = user.address;
       phone = user.phone;
       name = user.name;
@@ -217,31 +242,42 @@
       const city = document.getElementById('recv-city').value;
       name = document.getElementById('recv-name').value.trim();
       phone = document.getElementById('recv-phone').value.trim();
-      if (!addrVal || !name || !phone) {
-        errEl.textContent = 'Vui lòng điền đầy đủ thông tin địa chỉ giao hàng.';
-        errEl.style.display = 'flex'; return;
-      }
+
+      if (!addrVal) { errEl.textContent = 'Vui lòng nhập địa chỉ chi tiết.'; errEl.style.display = 'flex'; return; }
+      if (!name) { errEl.textContent = 'Vui lòng nhập họ tên người nhận.'; errEl.style.display = 'flex'; return; }
+      if (!phone || !/^0\d{9}$/.test(phone)) { errEl.textContent = 'Số điện thoại không hợp lệ (cần 10 chữ số bắt đầu 0).'; errEl.style.display = 'flex'; return; }
       address = `${addrVal}, ${district}, ${city}`;
     }
     errEl.style.display = 'none';
-    const paymentLabels = { cash: 'Tiền mặt', transfer: 'Chuyển khoản', online: 'Trực tuyến' };
+
+    // FIX: validate stock before placing order
+    const cartItems = DB.Cart.all();
+    for (const item of cartItems) {
+      const p = DB.Products.get(item.productId);
+      if (!p || p.stock < item.qty) {
+        errEl.textContent = `Sản phẩm "${item.name}" chỉ còn ${p ? p.stock : 0} cái. Vui lòng cập nhật giỏ hàng.`;
+        errEl.style.display = 'flex'; return;
+      }
+    }
+
+    // FIX: store paymentMethod as KEY ('cash', 'transfer', 'online'), not label
     const order = DB.Orders.place({
       userId: user.id,
       userName: name,
       phone,
       address,
-      items: DB.Cart.all().map(i => ({ productId: i.productId, name: i.name, qty: i.qty, price: i.price })),
+      items: cartItems.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, price: i.price })),
       total: DB.Cart.total(),
-      paymentMethod: paymentLabels[selectedPayment],
+      paymentMethod: selectedPayment,  // 'cash' | 'transfer' | 'online'
     });
 
     // Show confirmation
     document.getElementById('checkout-form-section').style.display = 'none';
     document.getElementById('order-confirm').style.display = 'block';
     document.getElementById('step3').classList.add('active');
-    document.getElementById('confirm-id').textContent = `#${order.id}`;
+    document.getElementById('confirm-id').textContent = `#${String(order.id).slice(-6)}`;
     document.getElementById('confirm-addr').textContent = address;
-    document.getElementById('confirm-pay').textContent = paymentLabels[selectedPayment];
+    document.getElementById('confirm-pay').textContent = DB.paymentLabel(selectedPayment);
     document.getElementById('confirm-total').textContent = DB.formatCurrency(order.total);
     DB.navbarUser();
   }

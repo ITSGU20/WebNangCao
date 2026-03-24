@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Đăng nhập - La Fleur Pâtisserie</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .pw-wrap { position: relative; }
+  .pw-wrap .form-control { padding-right: 2.8rem; }
+  .pw-toggle {
+    position: absolute; right: .75rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--gray); font-size: 1rem; line-height: 1; padding: 0;
+  }
+  .pw-toggle:hover { color: var(--espresso); }
+</style>
 </head>
 <body>
 <div class="auth-page">
@@ -15,17 +26,22 @@
     </div>
     <div class="auth-body">
       <div id="error-msg" class="alert alert-danger" style="display:none"></div>
-      <form id="login-form">
+
+      <form id="login-form" novalidate>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input type="email" class="form-control" id="email" placeholder="your@email.com" required>
+          <input type="email" class="form-control" id="email" placeholder="your@email.com" autocomplete="email"/>
         </div>
         <div class="form-group">
           <label class="form-label">Mật khẩu</label>
-          <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+          <div class="pw-wrap">
+            <input type="password" class="form-control" id="password" placeholder="••••••••" autocomplete="current-password"/>
+            <button type="button" class="pw-toggle" onclick="togglePw()" title="Hiện/ẩn mật khẩu">👁️</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">Đăng nhập</button>
       </form>
+
       <div style="margin-top:1.2rem;padding:0.9rem;background:var(--gray-light);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--gray)">
         <strong>Demo:</strong><br>
         📧 lan.nguyen@email.com / 123456<br>
@@ -37,25 +53,47 @@
     </div>
   </div>
 </div>
+
 <div id="toast"></div>
 <script src="data.js"></script>
 <script>
-  // If already logged in
   if (DB.Auth.isLoggedIn()) location.href = 'index.html';
 
-  document.getElementById('login-form').onsubmit = (e) => {
+  function togglePw() {
+    const el = document.getElementById('password');
+    const btn = document.querySelector('.pw-toggle');
+    const show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁️';
+  }
+
+  const errEl = document.getElementById('error-msg');
+
+  // Clear error on typing
+  document.getElementById('email').addEventListener('input', () => errEl.style.display = 'none');
+  document.getElementById('password').addEventListener('input', () => errEl.style.display = 'none');
+
+  document.getElementById('login-form').onsubmit = e => {
     e.preventDefault();
-    const email = document.getElementById('email').value.trim();
+    const email    = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      errEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.';
+      errEl.style.display = 'flex';
+      return;
+    }
+
     const result = DB.Auth.login(email, password, false);
     if (result.ok) {
       DB.showToast('Đăng nhập thành công!', 'success');
       const redirect = new URLSearchParams(location.search).get('redirect') || 'index.html';
-      setTimeout(() => location.href = redirect, 600);
+      setTimeout(() => location.href = redirect, 500);
     } else {
-      const err = document.getElementById('error-msg');
-      err.textContent = result.msg;
-      err.style.display = 'flex';
+      errEl.textContent = result.msg;
+      errEl.style.display = 'flex';
+      document.getElementById('password').value = '';
+      document.getElementById('password').focus();
     }
   };
 </script>

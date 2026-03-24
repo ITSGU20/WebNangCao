@@ -4,7 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - La Fleur Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="style.css">
+<style>
+  /* FIX: prevent stat number overflow */
+  .stat-info h3 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--espresso);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+  .stat-info h3.currency {
+    font-size: 1.2rem;
+  }
+</style>
 </head>
 <body>
 <div class="admin-layout" id="root"></div>
@@ -17,10 +35,10 @@
   function init() {
     const orders = DB.Orders.all();
     const users = DB.Users.all();
-    const products = DB.Products.all();
-    const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
+    const products = DB.Products.active();
+    const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + (o.total||0), 0);
     const newOrders = orders.filter(o => o.status === 'new').length;
-    const lowStock = DB.Products.active().filter(p => p.stock <= 5).length;
+    const lowStock = products.filter(p => p.stock <= 5).length;
 
     document.getElementById('root').innerHTML = `
       ${AdminLayout.sidebar('dashboard')}
@@ -31,7 +49,10 @@
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon si-caramel">💰</div>
-              <div class="stat-info"><h3>${DB.formatCurrency(totalRevenue).replace('₫','').trim()}</h3><p>Tổng doanh thu</p></div>
+              <div class="stat-info">
+                <h3 class="currency" title="${DB.formatCurrency(totalRevenue)}">${DB.formatShort(totalRevenue)} đ</h3>
+                <p>Tổng doanh thu</p>
+              </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon si-brown">🛒</div>
@@ -43,7 +64,7 @@
             </div>
             <div class="stat-card">
               <div class="stat-icon si-green">🎂</div>
-              <div class="stat-info"><h3>${products.filter(p=>p.active).length}</h3><p>Sản phẩm đang bán</p></div>
+              <div class="stat-info"><h3>${products.length}</h3><p>Sản phẩm đang bán</p></div>
             </div>
             <div class="stat-card">
               <div class="stat-icon si-purple">⚡</div>
@@ -62,15 +83,17 @@
                 <table class="data-table">
                   <thead><tr><th>Mã ĐH</th><th>Khách hàng</th><th>Tổng</th><th>Trạng thái</th></tr></thead>
                   <tbody>
-                    ${orders.slice(-5).reverse().map(o => {
-                      const st = DB.statusLabel(o.status);
-                      return `<tr>
-                        <td><a href="admin-orders.html" style="color:var(--caramel)">#${o.id}</a></td>
-                        <td>${o.userName}</td>
-                        <td>${DB.formatCurrency(o.total)}</td>
-                        <td><span class="badge ${st.cls}">${st.text}</span></td>
-                      </tr>`;
-                    }).join('')}
+                    ${orders.length === 0
+                      ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem">Chưa có đơn hàng</td></tr>`
+                      : [...orders].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,5).map(o => {
+                          const st = DB.statusLabel(o.status);
+                          return `<tr>
+                            <td><a href="admin-orders.html" style="color:var(--caramel)">#${String(o.id).slice(-6)}</a></td>
+                            <td>${o.userName || '—'}</td>
+                            <td style="white-space:nowrap">${DB.formatCurrency(o.total)}</td>
+                            <td><span class="badge ${st.cls}">${st.text}</span></td>
+                          </tr>`;
+                        }).join('')}
                   </tbody>
                 </table>
               </div>
@@ -82,10 +105,10 @@
                 <h3 style="font-family:var(--font-display);font-size:1.2rem;color:var(--chocolate)">⚠️ Sắp hết hàng</h3>
                 <a href="admin-inventory.html" style="font-size:0.82rem;color:var(--caramel)">Xem kho →</a>
               </div>
-              ${DB.Products.active().filter(p => p.stock <= 10).sort((a,b) => a.stock - b.stock).slice(0, 6).map(p => `
+              ${products.filter(p => p.stock <= 10).sort((a,b) => a.stock - b.stock).slice(0,6).map(p => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 0;border-bottom:1px solid var(--border);font-size:0.86rem">
-                  <span>${p.emoji} ${p.name}</span>
-                  <span class="badge ${p.stock <= 3 ? 'badge-danger' : p.stock <= 5 ? 'badge-warning' : 'badge-info'}">${p.stock} còn lại</span>
+                  <span>${p.emoji || '🍰'} ${p.name}</span>
+                  <span class="badge ${p.stock <= 0 ? 'badge-danger' : p.stock <= 3 ? 'badge-danger' : p.stock <= 5 ? 'badge-warning' : 'badge-info'}">${p.stock} còn lại</span>
                 </div>`).join('') || '<p class="text-muted">Tất cả sản phẩm còn đủ hàng ✅</p>'}
             </div>
           </div>

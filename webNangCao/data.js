@@ -30,21 +30,21 @@ const DB = (() => {
     ];
 
     const users = [
-      { id: 1, name: 'Nguyễn Thị Lan', email: 'lan.nguyen@email.com', phone: '0901234567', password: '123456', address: '123 Lê Lợi, Q1, TP.HCM', role: 'customer', active: true, createdAt: '2024-01-15' },
-      { id: 2, name: 'Trần Văn Minh', email: 'minh.tran@email.com', phone: '0912345678', password: '123456', address: '456 Nguyễn Huệ, Q1, TP.HCM', role: 'customer', active: true, createdAt: '2024-02-20' },
-      { id: 3, name: 'Phạm Thị Thu', email: 'thu.pham@email.com', phone: '0923456789', password: '123456', address: '789 Điện Biên Phủ, Q3, TP.HCM', role: 'customer', active: false, createdAt: '2024-03-10' },
-      { id: 4, name: 'Admin', email: 'admin@lafleur.com', phone: '0900000000', password: 'admin123', address: '', role: 'admin', active: true, createdAt: '2024-01-01' },
+      { id: 1, name: 'Nguyễn Thị Lan', email: 'lan.nguyen@email.com', phone: '0901234567', password: '123456', address: '123 Lê Lợi, Q1, TP.HCM', role: 'customer', active: true, createdAt: '2024-01-15T08:00:00.000Z' },
+      { id: 2, name: 'Trần Văn Minh', email: 'minh.tran@email.com', phone: '0912345678', password: '123456', address: '456 Nguyễn Huệ, Q1, TP.HCM', role: 'customer', active: true, createdAt: '2024-02-20T09:00:00.000Z' },
+      { id: 3, name: 'Phạm Thị Thu', email: 'thu.pham@email.com', phone: '0923456789', password: '123456', address: '789 Điện Biên Phủ, Q3, TP.HCM', role: 'customer', active: false, createdAt: '2024-03-10T10:00:00.000Z' },
+      { id: 4, name: 'Admin', email: 'admin@lafleur.com', phone: '0900000000', password: 'admin123', address: '', role: 'admin', active: true, createdAt: '2024-01-01T00:00:00.000Z' },
     ];
 
     const orders = [
-      { id: 1, userId: 1, userName: 'Nguyễn Thị Lan', phone: '0901234567', address: '123 Lê Lợi, Q1, TP.HCM', items: [{productId:1, name:'Bánh kem dâu tây', qty:1, price:150000}, {productId:9, name:'Macaron hương dâu', qty:4, price:25000}], total: 250000, paymentMethod: 'Tiền mặt', status: 'delivered', createdAt: '2024-11-10' },
-      { id: 2, userId: 2, userName: 'Trần Văn Minh', phone: '0912345678', address: '456 Nguyễn Huệ, Q1, TP.HCM', items: [{productId:2, name:'Bánh kem chocolate', qty:1, price:180000}], total: 180000, paymentMethod: 'Chuyển khoản', status: 'processing', createdAt: '2024-11-15' },
-      { id: 3, userId: 1, userName: 'Nguyễn Thị Lan', phone: '0901234567', address: '123 Lê Lợi, Q1, TP.HCM', items: [{productId:7, name:'Bánh quy bơ hộp', qty:2, price:120000}], total: 240000, paymentMethod: 'Online', status: 'new', createdAt: '2024-11-20' },
+      { id: 1701000001, userId: 1, userName: 'Nguyễn Thị Lan', phone: '0901234567', address: '123 Lê Lợi, Q1, TP.HCM', items: [{productId:1, name:'Bánh kem dâu tây', qty:1, price:150000}, {productId:9, name:'Macaron hương dâu', qty:4, price:25000}], total: 250000, paymentMethod: 'cash', status: 'delivered', createdAt: '2024-11-10T08:30:00.000Z' },
+      { id: 1701000002, userId: 2, userName: 'Trần Văn Minh', phone: '0912345678', address: '456 Nguyễn Huệ, Q1, TP.HCM', items: [{productId:2, name:'Bánh kem chocolate', qty:1, price:180000}], total: 180000, paymentMethod: 'transfer', status: 'processing', createdAt: '2024-11-15T14:00:00.000Z' },
+      { id: 1701000003, userId: 1, userName: 'Nguyễn Thị Lan', phone: '0901234567', address: '123 Lê Lợi, Q1, TP.HCM', items: [{productId:7, name:'Bánh quy bơ hộp', qty:2, price:120000}], total: 240000, paymentMethod: 'cash', status: 'new', createdAt: '2024-11-20T10:15:00.000Z' },
     ];
 
     const imports = [
-      { id: 1, date: '2024-11-01', items: [{productId:1, qty:20, costPrice:90000}, {productId:2, qty:15, costPrice:110000}], status: 'completed', createdAt: '2024-11-01' },
-      { id: 2, date: '2024-11-10', items: [{productId:5, qty:100, costPrice:18000}, {productId:6, qty:60, costPrice:25000}], status: 'pending', createdAt: '2024-11-10' },
+      { id: 1701000010, date: '2024-11-01', items: [{productId:1, qty:20, costPrice:90000}, {productId:2, qty:15, costPrice:110000}], status: 'completed', createdAt: '2024-11-01T08:00:00.000Z', doneAt: '2024-11-01T09:00:00.000Z' },
+      { id: 1701000011, date: '2024-11-10', items: [{productId:5, qty:100, costPrice:18000}, {productId:6, qty:60, costPrice:25000}], status: 'pending', createdAt: '2024-11-10T08:00:00.000Z' },
     ];
 
     save('lf_categories', categories);
@@ -58,7 +58,7 @@ const DB = (() => {
 
   function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
   function load(key, def = []) {
-    try { return JSON.parse(localStorage.getItem(key)) || def; }
+    try { return JSON.parse(localStorage.getItem(key)) ?? def; }
     catch { return def; }
   }
 
@@ -71,19 +71,30 @@ const DB = (() => {
       if (!user.active) return { ok: false, msg: 'Tài khoản đã bị khóa.' };
       if (isAdmin && user.role !== 'admin') return { ok: false, msg: 'Không có quyền truy cập admin.' };
       if (!isAdmin && user.role === 'admin') return { ok: false, msg: 'Vui lòng dùng trang đăng nhập admin.' };
-      save('lf_current_user', user);
+      localStorage.setItem('lf_current_user', JSON.stringify(user));
       return { ok: true, user };
     },
     logout() { localStorage.removeItem('lf_current_user'); },
-    current() { return load('lf_current_user', null); },
-    isAdmin() { const u = this.current(); return u && u.role === 'admin'; },
+    current() {
+      try {
+        const raw = localStorage.getItem('lf_current_user');
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    },
+    isAdmin() { const u = this.current(); return !!(u && u.role === 'admin'); },
     isLoggedIn() { return !!this.current(); },
-    requireLogin(redirect = 'login.html') { if (!this.isLoggedIn()) { location.href = redirect; return false; } return true; },
-    requireAdmin(redirect = 'admin-login.html') { if (!this.isAdmin()) { location.href = redirect; return false; } return true; },
+    requireLogin(redirect = 'login.html') {
+      if (!this.isLoggedIn()) { location.href = redirect; return false; }
+      return true;
+    },
+    requireAdmin(redirect = 'admin-login.html') {
+      if (!this.isAdmin()) { location.href = redirect; return false; }
+      return true;
+    },
     register(data) {
       const users = load('lf_users');
       if (users.find(u => u.email === data.email)) return { ok: false, msg: 'Email đã được sử dụng.' };
-      const user = { ...data, id: Date.now(), role: 'customer', active: true, createdAt: today() };
+      const user = { ...data, id: Date.now(), role: 'customer', active: true, createdAt: new Date().toISOString() };
       users.push(user);
       save('lf_users', users);
       return { ok: true, user };
@@ -94,7 +105,7 @@ const DB = (() => {
       if (idx === -1) return false;
       users[idx] = { ...users[idx], ...updates };
       save('lf_users', users);
-      save('lf_current_user', users[idx]);
+      localStorage.setItem('lf_current_user', JSON.stringify(users[idx]));
       return true;
     }
   };
@@ -109,7 +120,7 @@ const DB = (() => {
       const cats = load('lf_categories');
       if (data.id) {
         const idx = cats.findIndex(c => c.id == data.id);
-        if (idx !== -1) { cats[idx] = data; }
+        if (idx !== -1) cats[idx] = data;
       } else {
         data.id = Date.now();
         cats.push(data);
@@ -117,10 +128,7 @@ const DB = (() => {
       save('lf_categories', cats);
       return data;
     },
-    delete(id) {
-      const cats = load('lf_categories').filter(c => c.id != id);
-      save('lf_categories', cats);
-    },
+    delete(id) { save('lf_categories', load('lf_categories').filter(c => c.id != id)); },
     toggle(id) {
       const cats = load('lf_categories');
       const idx = cats.findIndex(c => c.id == id);
@@ -137,17 +145,17 @@ const DB = (() => {
     byCategory(catId) { return this.active().filter(p => p.catId == catId); },
     search(query, catId = null, minPrice = null, maxPrice = null) {
       let results = this.active();
-      if (query) results = results.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+      if (query) results = results.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || (p.code||'').toLowerCase().includes(query.toLowerCase()));
       if (catId) results = results.filter(p => p.catId == catId);
-      if (minPrice) results = results.filter(p => p.price >= minPrice);
-      if (maxPrice) results = results.filter(p => p.price <= maxPrice);
+      if (minPrice !== null) results = results.filter(p => p.price >= minPrice);
+      if (maxPrice !== null) results = results.filter(p => p.price <= maxPrice);
       return results;
     },
     save(data) {
       const products = load('lf_products');
       if (data.id) {
         const idx = products.findIndex(p => p.id == data.id);
-        if (idx !== -1) { products[idx] = { ...products[idx], ...data }; }
+        if (idx !== -1) products[idx] = { ...products[idx], ...data };
       } else {
         data.id = Date.now();
         data.stock = data.stock || 0;
@@ -162,10 +170,9 @@ const DB = (() => {
       const idx = products.findIndex(p => p.id == id);
       if (idx !== -1) { products[idx].active = !products[idx].active; save('lf_products', products); return products[idx]; }
     },
-    updateStock(id, delta) {
-      const products = load('lf_products');
-      const idx = products.findIndex(p => p.id == id);
-      if (idx !== -1) { products[idx].stock = Math.max(0, (products[idx].stock || 0) + delta); save('lf_products', products); }
+    // FIX: updateStock removed - stock updates now done within Imports.complete() to avoid race condition
+    hasBeenOrdered(id) {
+      return load('lf_orders').some(o => o.items && o.items.some(i => i.productId == id));
     }
   };
 
@@ -174,11 +181,6 @@ const DB = (() => {
     all() { return load('lf_users').filter(u => u.role !== 'admin'); },
     list() { return load('lf_users'); },
     get(id) { return load('lf_users').find(u => u.id == id); },
-    resetPassword(id) {
-      const users = load('lf_users');
-      const idx = users.findIndex(u => u.id == id);
-      if (idx !== -1) { users[idx].password = '123456'; save('lf_users', users); }
-    },
     toggle(id) {
       const users = load('lf_users');
       const idx = users.findIndex(u => u.id == id);
@@ -194,11 +196,19 @@ const DB = (() => {
     byUser(userId) { return this.all().filter(o => o.userId == userId); },
     place(orderData) {
       const orders = load('lf_orders');
-      const order = { ...orderData, id: Date.now(), status: 'new', createdAt: today() };
+      // FIX: use full ISO timestamp for proper sort
+      const order = { ...orderData, id: Date.now(), status: 'new', createdAt: new Date().toISOString() };
       orders.push(order);
       save('lf_orders', orders);
       // Reduce stock
-      order.items.forEach(item => Products.updateStock(item.productId, -item.qty));
+      const products = load('lf_products');
+      order.items.forEach(item => {
+        const pIdx = products.findIndex(p => p.id == item.productId);
+        if (pIdx !== -1) {
+          products[pIdx].stock = Math.max(0, (products[pIdx].stock || 0) - item.qty);
+        }
+      });
+      save('lf_products', products);
       // Clear cart
       save('lf_cart', []);
       return order;
@@ -210,8 +220,8 @@ const DB = (() => {
     },
     filter(startDate, endDate, status) {
       let orders = this.all();
-      if (startDate) orders = orders.filter(o => o.createdAt >= startDate);
-      if (endDate) orders = orders.filter(o => o.createdAt <= endDate);
+      if (startDate) orders = orders.filter(o => (o.createdAt||'').split('T')[0] >= startDate);
+      if (endDate) orders = orders.filter(o => (o.createdAt||'').split('T')[0] <= endDate);
       if (status) orders = orders.filter(o => o.status === status);
       return orders;
     }
@@ -222,28 +232,37 @@ const DB = (() => {
     all() { return load('lf_cart'); },
     count() { return this.all().reduce((s, i) => s + i.qty, 0); },
     total() { return this.all().reduce((s, i) => s + i.price * i.qty, 0); },
+    // FIX: check stock before adding
     add(productId, qty = 1) {
       const cart = this.all();
       const prod = Products.get(productId);
       if (!prod) return false;
       const idx = cart.findIndex(i => i.productId == productId);
-      if (idx !== -1) { cart[idx].qty += qty; }
-      else { cart.push({ productId, name: prod.name, emoji: prod.emoji, price: prod.price, qty }); }
+      const currentQty = idx !== -1 ? cart[idx].qty : 0;
+      const available = (prod.stock || 0) - currentQty;
+      if (available <= 0) return 'out';
+      const addQty = Math.min(qty, available);
+      if (idx !== -1) { cart[idx].qty += addQty; }
+      else { cart.push({ productId, name: prod.name, emoji: prod.emoji, price: prod.price, qty: addQty }); }
       save('lf_cart', cart);
-      return true;
+      return addQty === qty ? true : 'limited';
     },
+    // FIX: clamp qty to stock on update
     update(productId, qty) {
       const cart = this.all();
       const idx = cart.findIndex(i => i.productId == productId);
       if (idx !== -1) {
-        if (qty <= 0) { cart.splice(idx, 1); }
-        else { cart[idx].qty = qty; }
+        if (qty <= 0) {
+          cart.splice(idx, 1);
+        } else {
+          const prod = Products.get(productId);
+          const maxQty = prod ? (prod.stock || 0) : qty;
+          cart[idx].qty = Math.min(qty, maxQty);
+        }
         save('lf_cart', cart);
       }
     },
-    remove(productId) {
-      save('lf_cart', this.all().filter(i => i.productId != productId));
-    },
+    remove(productId) { save('lf_cart', this.all().filter(i => i.productId != productId)); },
     clear() { save('lf_cart', []); }
   };
 
@@ -256,33 +275,53 @@ const DB = (() => {
       const imports = load('lf_imports');
       if (data.id) {
         const idx = imports.findIndex(i => i.id == data.id);
-        if (idx !== -1) { imports[idx] = { ...imports[idx], ...data }; }
+        if (idx !== -1) imports[idx] = { ...imports[idx], ...data };
+        else imports.push(data);
       } else {
         data.id = Date.now();
         data.status = 'pending';
-        data.createdAt = today();
+        data.createdAt = new Date().toISOString();
         imports.push(data);
       }
       save('lf_imports', imports);
       return data;
     },
+    delete(id) {
+      const imp = this.get(id);
+      if (!imp || imp.status === 'completed') return false;
+      save('lf_imports', load('lf_imports').filter(i => i.id != id));
+      return true;
+    },
+    // FIX: weighted average costPrice, single atomic save, no double stock update
     complete(id) {
       const imports = load('lf_imports');
       const idx = imports.findIndex(i => i.id == id);
-      if (idx !== -1 && imports[idx].status === 'pending') {
-        imports[idx].status = 'completed';
-        imports[idx].doneAt = today();
-        save('lf_imports', imports);
-        // Update stock & cost prices
-        imports[idx].items.forEach(item => {
-          Products.updateStock(item.productId, item.qty);
-          const products = load('lf_products');
-          const pIdx = products.findIndex(p => p.id == item.productId);
-          if (pIdx !== -1) { products[pIdx].costPrice = item.costPrice; save('lf_products', products); }
-        });
-        return imports[idx];
-      }
-      return null;
+      if (idx === -1 || imports[idx].status !== 'pending') return null;
+
+      imports[idx].status = 'completed';
+      imports[idx].doneAt = new Date().toISOString();
+
+      // Load products once
+      const products = load('lf_products');
+      imports[idx].items.forEach(item => {
+        const pIdx = products.findIndex(p => p.id == item.productId);
+        if (pIdx === -1) return;
+        const p = products[pIdx];
+        const currentStock = p.stock || 0;
+        const currentCost = p.costPrice || item.costPrice;
+        const newStock = currentStock + item.qty;
+        // Weighted average formula
+        const newCostPrice = currentStock > 0
+          ? Math.round((currentStock * currentCost + item.qty * item.costPrice) / newStock)
+          : item.costPrice;
+        products[pIdx].stock = newStock;
+        products[pIdx].costPrice = newCostPrice;
+      });
+
+      // Save both in one go
+      save('lf_products', products);
+      save('lf_imports', imports);
+      return imports[idx];
     }
   };
 
@@ -290,7 +329,17 @@ const DB = (() => {
   function today() { return new Date().toISOString().split('T')[0]; }
 
   function formatCurrency(n) {
+    if (isNaN(n) || n === null || n === undefined) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+  }
+
+  // FIX: formatShort for dashboard stat cards — no overflow
+  function formatShort(n) {
+    if (isNaN(n) || n === null) return '0';
+    if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace(/\.0$/, '') + ' tỷ';
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + ' tr';
+    if (n >= 1000) return Math.round(n / 1000) + 'k';
+    return n.toLocaleString('vi-VN');
   }
 
   function formatDate(d) {
@@ -298,24 +347,31 @@ const DB = (() => {
     try {
       const date = new Date(d);
       if (!isNaN(date)) {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
       }
     } catch {}
-    // Fallback: parse YYYY-MM-DD string manually
-    const parts = d.split('T')[0].split('-');
+    const parts = String(d).split('T')[0].split('-');
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     return d;
   }
 
+  // FIX: payment method labels map (used by multiple pages)
+  const PAYMENT_LABELS = {
+    cash: 'Tiền mặt',
+    transfer: 'Chuyển khoản',
+    online: 'Trực tuyến'
+  };
+
+  function paymentLabel(key) {
+    return PAYMENT_LABELS[key] || key || '—';
+  }
+
   function statusLabel(status) {
     const map = {
-      new:        { text: 'Mới đặt',     label: 'Mới đặt',     cls: 'badge-info' },
-      processing: { text: 'Đang xử lý',  label: 'Đang xử lý',  cls: 'badge-warning' },
-      delivered:  { text: 'Đã giao',     label: 'Đã giao',     cls: 'badge-success' },
-      cancelled:  { text: 'Đã hủy',      label: 'Đã hủy',      cls: 'badge-danger' },
+      new:        { text: 'Mới đặt',    label: 'Mới đặt',    cls: 'badge-info' },
+      processing: { text: 'Đang xử lý', label: 'Đang xử lý', cls: 'badge-warning' },
+      delivered:  { text: 'Đã giao',    label: 'Đã giao',    cls: 'badge-success' },
+      cancelled:  { text: 'Đã hủy',     label: 'Đã hủy',     cls: 'badge-danger' },
     };
     return map[status] || { text: status, label: status, cls: 'badge-secondary' };
   }
@@ -330,9 +386,11 @@ const DB = (() => {
   }
 
   function updateCartBadge() {
-    const badges = document.querySelectorAll('.cart-badge');
     const count = Cart.count();
-    badges.forEach(b => { b.textContent = count; b.style.display = count ? 'flex' : 'none'; });
+    document.querySelectorAll('.cart-badge').forEach(b => {
+      b.textContent = count;
+      b.style.display = count ? 'flex' : 'none';
+    });
   }
 
   function paginate(arr, page, perPage = 8) {
@@ -342,17 +400,10 @@ const DB = (() => {
   }
 
   function renderPagination(first, second, third) {
-    // Detect call signature:
-    // Admin pages:    renderPagination(paged, onPage)       → returns HTML string
-    // Customer pages: renderPagination(container, paged, onPage) → writes to DOM
     const isDomElement = first && typeof first === 'object' && first.nodeType === 1;
-
     let container, paged, onPage;
-    if (isDomElement) {
-      container = first; paged = second; onPage = third;
-    } else {
-      paged = first; onPage = second;
-    }
+    if (isDomElement) { container = first; paged = second; onPage = third; }
+    else { paged = first; onPage = second; }
 
     if (paged.total <= 1) {
       if (isDomElement) { container.innerHTML = ''; return; }
@@ -371,28 +422,47 @@ const DB = (() => {
     return html;
   }
 
+  // FIX: productCard supports p.image (base64 or URL)
   function productCard(p, catName) {
     const gradients = ['#FFE8D6,#F7C9B5', '#E8F5E9,#C8E6C9', '#E3F2FD,#BBDEFB', '#FCE4EC,#F8BBD0', '#FFF8E1,#FFE082', '#EDE7F6,#D1C4E9'];
     const g = gradients[p.id % gradients.length];
+    const thumbInner = p.image
+      ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:0">`
+      : `<span style="font-size:4rem">${p.emoji || '🍰'}</span>`;
+    const thumbStyle = p.image ? '' : `background:linear-gradient(135deg,${g})`;
+    const stockBadge = p.stock <= 0
+      ? `<span class="badge badge-danger" style="font-size:.7rem">Hết hàng</span>`
+      : p.stock <= 5
+        ? `<span class="badge badge-warning" style="font-size:.7rem">Còn ${p.stock}</span>`
+        : '';
     return `
       <div class="product-card" onclick="location.href='product.html?id=${p.id}'">
-        <div class="product-thumb" style="background:linear-gradient(135deg,${g})">${p.emoji}</div>
+        <div class="product-thumb" style="${thumbStyle}">${thumbInner}${stockBadge ? `<div style="position:absolute;top:.5rem;right:.5rem;z-index:2">${stockBadge}</div>` : ''}</div>
         <div class="product-info">
           <div class="product-cat">${catName || ''}</div>
           <div class="product-name">${p.name}</div>
-          <div class="product-desc">${p.desc}</div>
+          <div class="product-desc">${p.desc || ''}</div>
           <div class="product-footer">
             <div class="product-price">${formatCurrency(p.price)}</div>
-            <button class="btn btn-caramel btn-sm" onclick="event.stopPropagation();addToCart(${p.id})">+ Giỏ hàng</button>
+            ${p.stock > 0
+              ? `<button class="btn btn-caramel btn-sm" onclick="event.stopPropagation();addToCart(${p.id})">+ Giỏ hàng</button>`
+              : `<button class="btn btn-secondary btn-sm" disabled>Hết hàng</button>`}
           </div>
         </div>
       </div>`;
   }
 
+  // FIX: addToCart handles stock-check return values
   function addToCart(productId) {
-    if (!Auth.isLoggedIn()) { showToast('Vui lòng đăng nhập để mua hàng', 'warning'); setTimeout(() => location.href = 'login.html', 1000); return; }
-    Cart.add(productId);
-    showToast('Đã thêm vào giỏ hàng! 🛒', 'success');
+    if (!Auth.isLoggedIn()) {
+      showToast('Vui lòng đăng nhập để mua hàng', 'warning');
+      setTimeout(() => location.href = 'login.html', 1000);
+      return;
+    }
+    const result = Cart.add(productId);
+    if (result === 'out') { showToast('Sản phẩm đã hết hàng!', 'error'); return; }
+    if (result === 'limited') { showToast('Đã thêm (đến giới hạn tồn kho)!', 'warning'); }
+    else { showToast('Đã thêm vào giỏ hàng! 🛒', 'success'); }
     updateCartBadge();
   }
 
@@ -426,14 +496,42 @@ const DB = (() => {
     });
   }
 
+  // Always ensure admin account exists, regardless of lf_init
+  // This fixes: lf_init already set from old session → init() skipped → admin user missing
+  function ensureAdmin() {
+    const users = load('lf_users');
+    const adminExists = users.find(u => u.role === 'admin');
+    if (!adminExists) {
+      users.push({
+        id: Date.now(),
+        name: 'Admin',
+        email: 'admin@lafleur.com',
+        password: 'admin123',
+        phone: '0900000000',
+        address: '',
+        role: 'admin',
+        active: true,
+        createdAt: new Date().toISOString()
+      });
+      save('lf_users', users);
+    } else if (adminExists.active === false) {
+      // Ensure admin is never permanently locked
+      const idx = users.findIndex(u => u.role === 'admin');
+      users[idx].active = true;
+      save('lf_users', users);
+    }
+  }
+
   // Auto init
   init();
+  ensureAdmin();
 
   return {
     Auth, Categories, Products, Users, Orders, Cart, Imports,
-    save, load, formatCurrency, formatDate, statusLabel,
-    showToast, updateCartBadge, paginate, renderPagination,
-    productCard, addToCart, navbarUser, today
+    save, load, formatCurrency, formatShort, formatDate, paymentLabel,
+    statusLabel, showToast, updateCartBadge, paginate, renderPagination,
+    productCard, addToCart, navbarUser, today,
+    PAYMENT_LABELS
   };
 })();
 

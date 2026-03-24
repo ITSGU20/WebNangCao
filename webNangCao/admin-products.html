@@ -7,6 +7,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    .img-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1.2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .img-upload-area:hover { border-color: var(--caramel); background: var(--gray-light); }
+    .img-upload-area input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .img-preview {
+      width: 100%; height: 160px; object-fit: cover;
+      border-radius: var(--radius-sm); display: block; margin-top: .5rem;
+    }
+    .product-img-thumb {
+      width: 46px; height: 46px; border-radius: 8px; object-fit: cover;
+      flex-shrink: 0; background: var(--gray-light);
+      display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+      overflow: hidden;
+    }
+    .product-img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  </style>
 </head>
 <body class="admin-body">
 <script src="data.js"></script>
@@ -58,16 +84,36 @@
 
 <!-- Add/Edit Modal -->
 <div class="modal-overlay" id="productModal" onclick="closeModalOutside(event)">
-  <div class="modal" style="max-width:580px">
+  <div class="modal" style="max-width:620px">
     <div class="modal-header">
       <h3 id="modalTitle">Thêm sản phẩm</h3>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="editId"/>
+      <input type="hidden" id="editImageData"/>
+
+      <!-- Image upload -->
+      <div class="form-group">
+        <label class="form-label">Hình ảnh sản phẩm</label>
+        <div class="img-upload-area" id="uploadArea">
+          <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)"/>
+          <div id="uploadPlaceholder">
+            <div style="font-size:2rem;margin-bottom:.4rem">📷</div>
+            <div style="font-size:.83rem;color:var(--muted)">Nhấn hoặc kéo thả ảnh vào đây</div>
+            <div style="font-size:.75rem;color:var(--gray);margin-top:.2rem">JPG, PNG, WEBP • Tối đa 5MB</div>
+          </div>
+          <img id="imagePreview" class="img-preview" style="display:none" alt="preview"/>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button type="button" class="btn btn-sm btn-outline" id="removeImgBtn" onclick="removeImage()" style="display:none">✕ Xóa ảnh</button>
+          <span style="font-size:.75rem;color:var(--muted);align-self:center" id="imgSizeInfo"></span>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
         <div class="form-group">
-          <label class="form-label">Emoji</label>
+          <label class="form-label">Emoji (fallback khi không có ảnh)</label>
           <input type="text" id="editEmoji" class="form-control" placeholder="🎂" style="font-size:1.4rem;text-align:center"/>
         </div>
         <div class="form-group">
@@ -116,17 +162,20 @@
 
 <!-- Delete Confirm -->
 <div class="modal-overlay" id="deleteModal" onclick="closeDeleteOutside(event)">
-  <div class="modal" style="max-width:400px">
+  <div class="modal" style="max-width:420px">
     <div class="modal-header">
       <h3>Xác nhận xoá</h3>
       <button class="modal-close" onclick="closeDeleteModal()">✕</button>
     </div>
     <div class="modal-body">
       <p>Bạn có chắc muốn xoá sản phẩm <strong id="deleteName"></strong>?</p>
+      <p id="deleteWarning" style="color:var(--rose);margin-top:.5rem;font-size:.88rem;display:none">
+        ⚠️ Sản phẩm này đã có trong đơn hàng. Hệ thống sẽ <strong>ẩn</strong> thay vì xoá hẳn.
+      </p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeDeleteModal()">Huỷ</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">Xoá</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">Xoá / Ẩn</button>
     </div>
   </div>
 </div>
@@ -140,13 +189,79 @@
   const PAGE_SIZE = 10;
   let deleteTargetId = null;
 
+  // ---- Image Upload + Compression ----
+  function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      DB.showToast('File quá lớn! Vui lòng chọn ảnh dưới 5MB', 'error');
+      return;
+    }
+    compressImage(file, (base64, sizeKB) => {
+      document.getElementById('editImageData').value = base64;
+      document.getElementById('imagePreview').src = base64;
+      document.getElementById('imagePreview').style.display = 'block';
+      document.getElementById('uploadPlaceholder').style.display = 'none';
+      document.getElementById('removeImgBtn').style.display = 'inline-flex';
+      document.getElementById('imgSizeInfo').textContent = `Ảnh: ~${sizeKB}KB`;
+    });
+  }
+
+  function compressImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 600;
+        let w = img.width, h = img.height;
+        const ratio = Math.min(MAX / w, MAX / h, 1);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // Try quality 0.75 first
+        let base64 = canvas.toDataURL('image/jpeg', 0.75);
+        // If still > 200KB encoded, reduce more
+        if (base64.length > 270000) base64 = canvas.toDataURL('image/jpeg', 0.5);
+        const sizeKB = Math.round(base64.length * 3 / 4 / 1024);
+        callback(base64, sizeKB);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    document.getElementById('editImageData').value = '';
+    document.getElementById('imagePreview').src = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('uploadPlaceholder').style.display = 'block';
+    document.getElementById('removeImgBtn').style.display = 'none';
+    document.getElementById('imgSizeInfo').textContent = '';
+    document.getElementById('imageInput').value = '';
+  }
+
+  function setImagePreview(imageData) {
+    if (imageData) {
+      document.getElementById('editImageData').value = imageData;
+      document.getElementById('imagePreview').src = imageData;
+      document.getElementById('imagePreview').style.display = 'block';
+      document.getElementById('uploadPlaceholder').style.display = 'none';
+      document.getElementById('removeImgBtn').style.display = 'inline-flex';
+      const sizeKB = Math.round(imageData.length * 3 / 4 / 1024);
+      document.getElementById('imgSizeInfo').textContent = `Ảnh: ~${sizeKB}KB`;
+    } else {
+      removeImage();
+    }
+  }
+
+  // ---- Category Filters ----
   function populateCategoryFilters() {
     const cats = DB.Categories.list();
-    const catFilter = document.getElementById('catFilter');
-    const editCatId = document.getElementById('editCatId');
-    const options = cats.map(c => `<option value="${c.id}">${c.emoji || ''} ${c.name}</option>`).join('');
-    catFilter.innerHTML = '<option value="">Tất cả danh mục</option>' + options;
-    editCatId.innerHTML = '<option value="">-- Chọn danh mục --</option>' + options;
+    const opts = cats.map(c => `<option value="${c.id}">${c.emoji||''} ${c.name}</option>`).join('');
+    document.getElementById('catFilter').innerHTML = '<option value="">Tất cả danh mục</option>' + opts;
+    document.getElementById('editCatId').innerHTML = '<option value="">-- Chọn danh mục --</option>' + opts;
   }
 
   function getFiltered() {
@@ -174,11 +289,14 @@
       tbody.innerHTML = paged.items.map(p => {
         const cat = cats.find(c => c.id === p.catId);
         const lowStock = p.stock <= 5;
+        const thumbHTML = p.image
+          ? `<div class="product-img-thumb"><img src="${p.image}" alt="${p.name}"/></div>`
+          : `<div class="product-img-thumb">${p.emoji || '🍰'}</div>`;
         return `
           <tr>
             <td>
               <div style="display:flex;align-items:center;gap:.75rem">
-                <span style="font-size:1.8rem">${p.emoji || '🍰'}</span>
+                ${thumbHTML}
                 <strong>${p.name}</strong>
               </div>
             </td>
@@ -189,7 +307,7 @@
             <td><span class="badge ${lowStock ? 'badge-danger' : 'badge-secondary'}">${p.stock || 0}</span></td>
             <td><span class="badge ${p.active !== false ? 'badge-success' : 'badge-danger'}">${p.active !== false ? 'Hiển thị' : 'Ẩn'}</span></td>
             <td>
-              <div style="display:flex;gap:.5rem">
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap">
                 <button class="btn btn-sm btn-outline" onclick="openEditModal(${p.id})">Sửa</button>
                 <button class="btn btn-sm ${p.active !== false ? 'btn-outline' : 'btn-success'}" onclick="toggleActive(${p.id})">${p.active !== false ? 'Ẩn' : 'Hiện'}</button>
                 <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${p.id})">Xoá</button>
@@ -207,6 +325,7 @@
     document.getElementById('editStock').value = '0';
     document.getElementById('editCatId').value = '';
     document.getElementById('editActive').value = 'true';
+    removeImage();
     document.getElementById('productModal').classList.add('active');
   }
 
@@ -224,6 +343,7 @@
     document.getElementById('editStock').value = p.stock || 0;
     document.getElementById('editCatId').value = p.catId;
     document.getElementById('editActive').value = String(p.active !== false);
+    setImagePreview(p.image || '');
     document.getElementById('productModal').classList.add('active');
   }
 
@@ -241,15 +361,18 @@
     const stock = parseInt(document.getElementById('editStock').value) || 0;
     const desc = document.getElementById('editDesc').value.trim();
     const active = document.getElementById('editActive').value === 'true';
+    const image = document.getElementById('editImageData').value || '';
 
-    if (!name || !catId || !price) return DB.showToast('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+    if (!name) return DB.showToast('Vui lòng nhập tên sản phẩm', 'error');
+    if (!catId) return DB.showToast('Vui lòng chọn danh mục', 'error');
+    if (!price || price <= 0) return DB.showToast('Vui lòng nhập giá bán hợp lệ', 'error');
 
     const products = DB.Products.list();
     if (id) {
       const idx = products.findIndex(p => p.id === parseInt(id));
-      if (idx >= 0) products[idx] = { ...products[idx], emoji, code, name, catId, price, costPrice, stock, desc, active };
+      if (idx >= 0) products[idx] = { ...products[idx], emoji, code, name, catId, price, costPrice, stock, desc, active, image };
     } else {
-      products.push({ id: Date.now(), emoji, code, name, catId, price, costPrice, stock, desc, active: true });
+      products.push({ id: Date.now(), emoji, code, name, catId, price, costPrice, stock, desc, active: true, image });
     }
     localStorage.setItem('lf_products', JSON.stringify(products));
     DB.showToast(id ? 'Cập nhật sản phẩm thành công' : 'Thêm sản phẩm thành công');
@@ -273,15 +396,27 @@
     if (!p) return;
     deleteTargetId = id;
     document.getElementById('deleteName').textContent = p.name;
+    const hasOrders = DB.Products.hasBeenOrdered(id);
+    document.getElementById('deleteWarning').style.display = hasOrders ? 'block' : 'none';
+    document.getElementById('confirmDeleteBtn').textContent = hasOrders ? 'Ẩn sản phẩm' : 'Xoá';
     document.getElementById('deleteModal').classList.add('active');
   }
   function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); deleteTargetId = null; }
   function closeDeleteOutside(e) { if (e.target.id === 'deleteModal') closeDeleteModal(); }
 
   function confirmDelete() {
-    const products = DB.Products.list().filter(p => p.id !== deleteTargetId);
-    localStorage.setItem('lf_products', JSON.stringify(products));
-    DB.showToast('Đã xoá sản phẩm');
+    const hasOrders = DB.Products.hasBeenOrdered(deleteTargetId);
+    if (hasOrders) {
+      // Hide instead of delete (has order history)
+      const products = DB.Products.list();
+      const idx = products.findIndex(p => p.id === deleteTargetId);
+      if (idx >= 0) { products[idx].active = false; localStorage.setItem('lf_products', JSON.stringify(products)); }
+      DB.showToast('Đã ẩn sản phẩm (đã có trong đơn hàng)');
+    } else {
+      const products = DB.Products.list().filter(p => p.id !== deleteTargetId);
+      localStorage.setItem('lf_products', JSON.stringify(products));
+      DB.showToast('Đã xoá sản phẩm');
+    }
     closeDeleteModal();
     renderPage();
   }

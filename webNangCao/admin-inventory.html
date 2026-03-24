@@ -42,10 +42,15 @@
           <select id="stockFilter" class="form-control" style="width:200px" onchange="renderTable()">
             <option value="">Tất cả mức tồn kho</option>
             <option value="out">Hết hàng (0)</option>
-            <option value="low">Sắp hết (1–10)</option>
+            <option value="low">Sắp hết (≤ ngưỡng)</option>
             <option value="ok">Còn hàng (>10)</option>
           </select>
-          <button class="btn btn-primary" onclick="openAdjustModal(null)" style="margin-left:auto">± Điều chỉnh tồn kho</button>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-left:auto">
+            <label style="font-size:.82rem;color:var(--muted);white-space:nowrap">⚠️ Ngưỡng sắp hết:</label>
+            <input type="number" id="thresholdInput" class="form-control" value="10" min="1" max="999"
+                   style="width:75px;text-align:center" onchange="applyThreshold()" title="Số lượng được coi là sắp hết hàng"/>
+            <button class="btn btn-primary" onclick="openAdjustModal(null)">± Điều chỉnh tồn kho</button>
+          </div>
         </div>
       </div>
 
@@ -134,7 +139,9 @@
 
   let currentPage = 1;
   const PAGE_SIZE = 15;
-  const LOW_STOCK_THRESHOLD = 10;
+  // Configurable threshold - reads from input
+  function getThreshold() { return parseInt(document.getElementById('thresholdInput')?.value) || 10; }
+  function applyThreshold() { renderStats(); renderLowStockAlert(); renderPage(); }
   const HISTORY_KEY = 'lf_stock_history';
 
   function getHistory() { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
@@ -166,7 +173,7 @@
     const products = DB.Products.list();
     const total = products.reduce((s, p) => s + (p.stock || 0), 0);
     const outOfStock = products.filter(p => !p.stock || p.stock <= 0).length;
-    const lowStock = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).length;
+    const lowStock = products.filter(p => p.stock > 0 && p.stock <= getThreshold()).length;
     const stockValue = products.reduce((s, p) => s + (p.stock || 0) * (p.costPrice || 0), 0);
     document.getElementById('statsRow').innerHTML = `
       <div class="admin-stat-card">
@@ -189,7 +196,7 @@
   }
 
   function renderLowStockAlert() {
-    const products = DB.Products.list().filter(p => p.stock >= 0 && p.stock <= LOW_STOCK_THRESHOLD);
+    const products = DB.Products.list().filter(p => p.stock >= 0 && p.stock <= getThreshold());
     const el = document.getElementById('lowStockAlert');
     if (products.length === 0) { el.style.display = 'none'; return; }
     el.style.display = '';

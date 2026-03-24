@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chi tiết sản phẩm - La Fleur Pâtisserie</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .product-gallery-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+    display: block;
+  }
+</style>
 </head>
 <body>
 <nav class="navbar">
@@ -18,12 +27,17 @@
 </nav>
 
 <div style="max-width:1200px;margin:0 auto;padding:1.5rem 2rem 0">
-  <div class="breadcrumb"><a href="index.html" style="color:var(--gray)">Trang chủ</a> › <a href="index.html#products" style="color:var(--gray)">Sản phẩm</a> › <span id="bc-name">Chi tiết</span></div>
+  <div class="breadcrumb">
+    <a href="index.html" style="color:var(--gray)">Trang chủ</a> ›
+    <a href="index.html#products" style="color:var(--gray)">Sản phẩm</a> ›
+    <span id="bc-name">Chi tiết</span>
+  </div>
 </div>
 
 <div class="product-detail-layout">
   <!-- Gallery -->
   <div>
+    <!-- FIX: support real image OR emoji fallback -->
     <div class="product-gallery" id="product-gallery" style="background:linear-gradient(135deg,var(--caramel-light),var(--rose-light))"></div>
     <div style="display:flex;gap:0.8rem;margin-top:1rem">
       <div style="flex:1;padding:0.8rem;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-size:0.78rem;color:var(--gray)">🌿 Nguyên liệu tươi</div>
@@ -37,8 +51,8 @@
     <div class="detail-cat" id="detail-cat"></div>
     <h1 class="detail-name" id="detail-name"></h1>
     <div class="detail-price" id="detail-price"></div>
-    
-    <div style="display:flex;gap:0.5rem;margin-bottom:1.2rem">
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.2rem;align-items:center">
       <span style="color:#F39C12;font-size:1rem">★★★★★</span>
       <span style="font-size:0.82rem;color:var(--gray)">(128 đánh giá)</span>
     </div>
@@ -53,7 +67,7 @@
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem" id="qty-section">
       <span style="font-size:0.85rem;font-weight:600;color:var(--chocolate)">Số lượng:</span>
       <div class="qty-control">
         <button class="qty-btn" onclick="changeQty(-1)">−</button>
@@ -62,7 +76,7 @@
       </div>
     </div>
 
-    <div class="detail-actions">
+    <div class="detail-actions" id="detail-actions">
       <button class="btn btn-caramel btn-lg" onclick="addCart()" id="btn-add">🛒 Thêm vào giỏ</button>
       <button class="btn btn-primary btn-lg" onclick="buyNow()" id="btn-buy">⚡ Mua ngay</button>
     </div>
@@ -90,7 +104,7 @@
     const id = new URLSearchParams(location.search).get('id');
     if (!id) { location.href = 'index.html'; return; }
     product = DB.Products.get(id);
-    if (!product) { location.href = 'index.html'; return; }
+    if (!product || product.active === false) { location.href = 'index.html'; return; }
 
     const cat = DB.Categories.get(product.catId);
     const catName = cat ? cat.name : '';
@@ -99,43 +113,73 @@
 
     document.title = `${product.name} - La Fleur Pâtisserie`;
     document.getElementById('bc-name').textContent = product.name;
-    document.getElementById('product-gallery').style.background = `linear-gradient(135deg,${g})`;
-    document.getElementById('product-gallery').innerHTML = `<span style="font-size:9rem">${product.emoji}</span>`;
+
+    // FIX: show real image if available, else emoji + gradient
+    const gallery = document.getElementById('product-gallery');
+    if (product.image) {
+      gallery.style.background = 'none';
+      gallery.style.padding = '0';
+      gallery.innerHTML = `<img src="${product.image}" alt="${product.name}" class="product-gallery-img"/>`;
+    } else {
+      gallery.style.background = `linear-gradient(135deg,${g})`;
+      gallery.innerHTML = `<span style="font-size:9rem">${product.emoji || '🍰'}</span>`;
+    }
+
     document.getElementById('detail-cat').textContent = catName;
     document.getElementById('detail-cat2').textContent = catName;
     document.getElementById('detail-name').textContent = product.name;
     document.getElementById('detail-price').textContent = DB.formatCurrency(product.price);
     document.getElementById('detail-desc').textContent = product.desc;
-    document.getElementById('detail-code').textContent = product.code;
-    document.getElementById('detail-stock').textContent = product.stock > 0 ? `Còn ${product.stock} sản phẩm` : '❌ Hết hàng';
+    document.getElementById('detail-code').textContent = product.code || '—';
 
+    const stockEl = document.getElementById('detail-stock');
     if (product.stock <= 0) {
+      stockEl.innerHTML = '<span style="color:#e74c3c">❌ Hết hàng</span>';
       document.getElementById('btn-add').disabled = true;
+      document.getElementById('btn-add').textContent = 'Hết hàng';
       document.getElementById('btn-buy').disabled = true;
+      document.getElementById('qty-section').style.opacity = '0.4';
+    } else {
+      stockEl.textContent = `Còn ${product.stock} sản phẩm`;
+      if (product.stock <= 5) {
+        stockEl.innerHTML += ` <span class="badge badge-warning" style="font-size:.72rem">Sắp hết</span>`;
+      }
     }
 
-    // Related
+    // Related products
     const related = DB.Products.byCategory(product.catId).filter(p => p.id != product.id).slice(0, 4);
     const catMap = Object.fromEntries(DB.Categories.all().map(c => [c.id, c.name]));
     document.getElementById('related-grid').innerHTML = related.map(p => DB.productCard(p, catMap[p.catId])).join('') || '<p class="text-muted">Không có sản phẩm liên quan.</p>';
   }
 
   function changeQty(delta) {
-    qty = Math.max(1, Math.min(qty + delta, product ? product.stock : 1));
+    if (!product) return;
+    qty = Math.max(1, Math.min(qty + delta, product.stock || 1));
     document.getElementById('qty').textContent = qty;
   }
 
   function addCart() {
-    if (!DB.Auth.isLoggedIn()) { DB.showToast('Vui lòng đăng nhập để mua hàng', 'warning'); setTimeout(() => location.href = 'login.html', 1000); return; }
-    for (let i = 0; i < qty; i++) DB.Cart.add(product.id);
-    DB.showToast('Đã thêm vào giỏ hàng! 🛒', 'success');
+    if (!DB.Auth.isLoggedIn()) {
+      DB.showToast('Vui lòng đăng nhập để mua hàng', 'warning');
+      setTimeout(() => location.href = 'login.html?redirect=' + encodeURIComponent(location.href), 1000);
+      return;
+    }
+    // Add qty times
+    const result = DB.Cart.add(product.id, qty);
+    if (result === 'out') { DB.showToast('Sản phẩm đã hết hàng!', 'error'); return; }
+    if (result === 'limited') { DB.showToast('Đã thêm (giới hạn theo tồn kho)!', 'warning'); }
+    else { DB.showToast(`Đã thêm ${qty} cái vào giỏ hàng! 🛒`, 'success'); }
     DB.updateCartBadge();
   }
 
   function buyNow() {
-    if (!DB.Auth.isLoggedIn()) { DB.showToast('Vui lòng đăng nhập để mua hàng', 'warning'); setTimeout(() => location.href = 'login.html', 1000); return; }
-    for (let i = 0; i < qty; i++) DB.Cart.add(product.id);
-    location.href = 'cart.html';
+    if (!DB.Auth.isLoggedIn()) {
+      DB.showToast('Vui lòng đăng nhập để mua hàng', 'warning');
+      setTimeout(() => location.href = 'login.html?redirect=' + encodeURIComponent(location.href), 1000);
+      return;
+    }
+    DB.Cart.add(product.id, qty);
+    location.href = 'checkout.html';
   }
 
   init();

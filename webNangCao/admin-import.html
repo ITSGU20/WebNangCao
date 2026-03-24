@@ -7,6 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    .import-row { display:grid; grid-template-columns:1fr 110px 130px 110px 36px; gap:.6rem; align-items:center; margin-bottom:.6rem; }
+    .import-row .row-total { font-weight:600; color:var(--chocolate); font-size:.9rem; text-align:right; }
+    .import-row-head { display:grid; grid-template-columns:1fr 110px 130px 110px 36px; gap:.6rem; align-items:center; font-size:.75rem; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:.4px; margin-bottom:.5rem; padding:.5rem 0; border-bottom:1px solid var(--border); }
+    .add-row-btn { border:1.5px dashed var(--border); background:none; cursor:pointer; width:100%; padding:.6rem; border-radius:var(--radius-sm); font-size:.85rem; color:var(--caramel); font-family:var(--font-body); transition:all .2s; margin-top:.4rem; }
+    .add-row-btn:hover { border-color:var(--caramel); background:rgba(196,134,60,.05); }
+    .import-total-bar { display:flex; justify-content:space-between; align-items:center; padding:.9rem 1rem; background:var(--bg); border-radius:var(--radius-sm); margin-top:.8rem; }
+    .stat-mini { background:var(--white); border-radius:var(--radius); padding:1rem 1.25rem; box-shadow:0 2px 12px var(--shadow); }
+    .stat-mini .val { font-size:1.4rem; font-weight:700; color:var(--espresso); }
+    .stat-mini .lbl { font-size:.78rem; color:var(--muted); margin-top:.15rem; }
+    .weighted-info { background:#e8f4f8; border-radius:8px; padding:.75rem 1rem; font-size:.82rem; color:#0a4d68; margin-top:.5rem; }
+  </style>
 </head>
 <body class="admin-body">
 <script src="data.js"></script>
@@ -18,17 +30,26 @@
     <div id="topbar-container"></div>
     <div class="admin-content">
 
+      <!-- Stats -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem" id="statsRow"></div>
+
+      <!-- Filters -->
       <div class="filter-bar card" style="margin-bottom:1.5rem">
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm mã phiếu…" style="width:200px" oninput="renderTable()"/>
           <select id="statusFilter" class="form-control" style="width:180px" onchange="renderTable()">
             <option value="">Tất cả trạng thái</option>
             <option value="pending">Chờ xử lý</option>
-            <option value="completed">Đã hoàn thành</option>
+            <option value="completed">Hoàn thành</option>
           </select>
+          <input type="date" id="dateFrom" class="form-control" style="width:155px" onchange="renderTable()" title="Từ ngày"/>
+          <input type="date" id="dateTo" class="form-control" style="width:155px" onchange="renderTable()" title="Đến ngày"/>
+          <button class="btn btn-outline" onclick="clearFilters()">Xoá lọc</button>
           <button class="btn btn-primary" onclick="openAddModal()" style="margin-left:auto">+ Tạo phiếu nhập</button>
         </div>
       </div>
 
+      <!-- Table -->
       <div class="card">
         <table class="admin-table">
           <thead>
@@ -36,9 +57,9 @@
               <th>Mã phiếu</th>
               <th>Ngày nhập</th>
               <th>Số mặt hàng</th>
-              <th>Tổng tiền vốn</th>
+              <th>Tổng số lượng</th>
+              <th>Tổng giá trị</th>
               <th>Trạng thái</th>
-              <th>Ngày tạo</th>
               <th>Thao tác</th>
             </tr>
           </thead>
@@ -51,59 +72,76 @@
   </div>
 </div>
 
-<!-- Add Import Modal -->
+<!-- Add/Edit Modal -->
 <div class="modal-overlay" id="importModal" onclick="closeModalOutside(event)">
-  <div class="modal" style="max-width:700px">
+  <div class="modal" style="max-width:720px">
     <div class="modal-header">
-      <h3>Tạo phiếu nhập hàng</h3>
+      <h3 id="modalTitle">Tạo phiếu nhập hàng</h3>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="editId"/>
+
       <div class="form-group">
         <label class="form-label">Ngày nhập *</label>
-        <input type="date" id="importDate" class="form-control" style="width:200px"/>
+        <input type="date" id="editDate" class="form-control" style="width:200px"/>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <strong>Danh sách hàng nhập</strong>
-        <button class="btn btn-sm btn-outline" onclick="addImportRow()">+ Thêm dòng</button>
+      <div class="weighted-info">
+        ℹ️ Giá nhập sẽ được cập nhật theo <strong>quy tắc bình quân</strong> khi hoàn thành phiếu:<br/>
+        <code style="font-size:.8rem">Giá nhập mới = (Tồn × Giá hiện tại + SL nhập × Giá nhập) / (Tồn + SL nhập)</code>
       </div>
 
-      <table class="admin-table" style="margin-bottom:1rem">
-        <thead>
-          <tr>
-            <th>Sản phẩm</th>
-            <th style="width:120px">Số lượng</th>
-            <th style="width:160px">Giá vốn (đ)</th>
-            <th style="width:160px">Thành tiền</th>
-            <th style="width:50px"></th>
-          </tr>
-        </thead>
-        <tbody id="importRows"></tbody>
-      </table>
+      <div style="margin-top:1rem">
+        <div class="import-row-head">
+          <div>Sản phẩm</div>
+          <div style="text-align:center">Số lượng</div>
+          <div style="text-align:center">Giá nhập (đ)</div>
+          <div style="text-align:right">Thành tiền</div>
+          <div></div>
+        </div>
+        <div id="importRows"></div>
+        <button class="add-row-btn" onclick="addRow()">+ Thêm sản phẩm</button>
+      </div>
 
-      <div style="text-align:right;font-size:1.1rem;font-weight:600;color:var(--primary)">
-        Tổng cộng: <span id="importTotal">0 đ</span>
+      <div class="import-total-bar">
+        <span style="font-size:.88rem;color:var(--muted)">Tổng giá trị phiếu nhập:</span>
+        <span id="grandTotal" style="font-size:1.15rem;font-weight:700;color:var(--chocolate)">0 ₫</span>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
-      <button class="btn btn-secondary" onclick="saveImport('pending')">Lưu nháp</button>
-      <button class="btn btn-primary" onclick="saveImport('completed')">Hoàn thành & cập nhật kho</button>
+      <button class="btn btn-secondary" onclick="saveImport(false)">💾 Lưu nháp</button>
+      <button class="btn btn-primary" onclick="saveImport(true)">✅ Hoàn thành ngay</button>
     </div>
   </div>
 </div>
 
 <!-- View Detail Modal -->
-<div class="modal-overlay" id="detailModal" onclick="closeDetailOutside(event)">
-  <div class="modal" style="max-width:680px">
+<div class="modal-overlay" id="viewModal" onclick="closeViewOutside(event)">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header">
-      <h3 id="detailTitle">Chi tiết phiếu nhập</h3>
-      <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      <h3 id="viewModalTitle">Chi tiết phiếu nhập</h3>
+      <button class="modal-close" onclick="closeViewModal()">✕</button>
     </div>
-    <div class="modal-body" id="detailBody"></div>
-    <div class="modal-footer" id="detailFooter">
-      <button class="btn btn-outline" onclick="closeDetailModal()">Đóng</button>
+    <div class="modal-body" id="viewModalBody"></div>
+    <div class="modal-footer" id="viewModalFooter">
+      <button class="btn btn-outline" onclick="closeViewModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Complete Confirm Modal -->
+<div class="modal-overlay" id="completeModal" onclick="closeCompleteOutside(event)">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h3>Xác nhận hoàn thành phiếu</h3>
+      <button class="modal-close" onclick="closeCompleteModal()">✕</button>
+    </div>
+    <div class="modal-body" id="completeModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeCompleteModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="confirmComplete()">✅ Xác nhận hoàn thành</button>
     </div>
   </div>
 </div>
@@ -115,39 +153,83 @@
 
   let currentPage = 1;
   const PAGE_SIZE = 10;
-  let importRowCount = 0;
-  let currentDetailId = null;
+  let rowCount = 0;
+  let completeTargetId = null;
+
+  // ---- Stats ----
+  function renderStats() {
+    const imports = DB.Imports.list();
+    const pending = imports.filter(i => i.status === 'pending').length;
+    const completed = imports.filter(i => i.status === 'completed').length;
+    const totalValue = imports.filter(i => i.status === 'completed').reduce((s, i) => s + calcTotal(i.items), 0);
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-mini"><div class="val">${imports.length}</div><div class="lbl">Tổng phiếu nhập</div></div>
+      <div class="stat-mini"><div class="val" style="color:#f39c12">${pending}</div><div class="lbl">Chờ xử lý</div></div>
+      <div class="stat-mini"><div class="val" style="color:#27ae60">${completed}</div><div class="lbl">Hoàn thành</div></div>
+      <div class="stat-mini"><div class="val" style="font-size:1.1rem">${DB.formatShort(totalValue)} đ</div><div class="lbl">Tổng trị giá nhập</div></div>
+    `;
+  }
+
+  function calcTotal(items) {
+    return (items||[]).reduce((s, it) => s + it.qty * it.costPrice, 0);
+  }
+
+  // ---- Filters ----
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    renderTable();
+  }
 
   function getFiltered() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
     const status = document.getElementById('statusFilter').value;
-    return DB.Imports.list().filter(i => !status || i.status === status)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    return DB.Imports.list().filter(i => {
+      const matchSearch = !search || String(i.id).includes(search) || (i.date||'').includes(search);
+      const matchStatus = !status || i.status === status;
+      const matchFrom = !from || (i.date||'') >= from;
+      const matchTo = !to || (i.date||'') <= to;
+      return matchSearch && matchStatus && matchFrom && matchTo;
+    }).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
   function renderTable() { currentPage = 1; renderPage(); }
 
   function renderPage() {
+    const products = DB.Products.list();
     const filtered = getFiltered();
     const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
     const tbody = document.getElementById('tableBody');
     if (paged.items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có phiếu nhập nào</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Chưa có phiếu nhập nào</td></tr>';
     } else {
       tbody.innerHTML = paged.items.map(imp => {
-        const total = imp.items.reduce((s, it) => s + (it.qty * it.costPrice), 0);
+        const totalQty = (imp.items||[]).reduce((s,it) => s + it.qty, 0);
+        const totalVal = calcTotal(imp.items);
+        const isPending = imp.status === 'pending';
         return `
           <tr>
-            <td><code style="background:var(--bg);padding:.2rem .5rem;border-radius:4px">#${imp.id.toString().slice(-6)}</code></td>
-            <td>${imp.date || '—'}</td>
-            <td>${imp.items.length} mặt hàng</td>
-            <td style="font-weight:600;color:var(--primary)">${DB.formatCurrency(total)}</td>
-            <td><span class="badge ${imp.status === 'completed' ? 'badge-success' : 'badge-warning'}">${imp.status === 'completed' ? 'Hoàn thành' : 'Chờ xử lý'}</span></td>
-            <td>${DB.formatDate(imp.createdAt)}</td>
+            <td><code style="background:var(--bg);padding:.2rem .5rem;border-radius:4px">#${String(imp.id).slice(-6)}</code></td>
+            <td>${DB.formatDate(imp.date || imp.createdAt)}</td>
+            <td>${(imp.items||[]).length} mặt hàng</td>
+            <td>${totalQty} cái</td>
+            <td style="font-weight:600">${DB.formatCurrency(totalVal)}</td>
             <td>
-              <div style="display:flex;gap:.5rem">
-                <button class="btn btn-sm btn-outline" onclick="openDetailModal(${imp.id})">Xem</button>
-                ${imp.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="completeImport(${imp.id})">Hoàn thành</button>` : ''}
-                ${imp.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="deleteImport(${imp.id})">Xoá</button>` : ''}
+              <span class="badge ${isPending ? 'badge-warning' : 'badge-success'}">
+                ${isPending ? 'Chờ xử lý' : 'Hoàn thành'}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <button class="btn btn-sm btn-outline" onclick="openViewModal(${imp.id})">Xem</button>
+                ${isPending ? `
+                  <button class="btn btn-sm btn-outline" onclick="openEditModal(${imp.id})">Sửa</button>
+                  <button class="btn btn-sm btn-primary" onclick="openCompleteModal(${imp.id})">Hoàn thành</button>
+                ` : ''}
               </div>
             </td>
           </tr>`;
@@ -156,146 +238,152 @@
     document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
   }
 
+  // ---- Import Rows ----
+  function addRow(productId = '', qty = 1, costPrice = '') {
+    const products = DB.Products.list();
+    const opts = products.map(p => `<option value="${p.id}" ${p.id == productId ? 'selected' : ''}>${p.emoji||''} ${p.name} (tồn: ${p.stock||0})</option>`).join('');
+    const id = ++rowCount;
+    const div = document.createElement('div');
+    div.className = 'import-row';
+    div.id = `row_${id}`;
+    div.innerHTML = `
+      <select class="form-control" id="rp_${id}" onchange="updateRowTotal(${id})">
+        <option value="">-- Chọn sản phẩm --</option>
+        ${opts}
+      </select>
+      <input type="number" class="form-control" id="rq_${id}" value="${qty}" min="1" placeholder="SL" oninput="updateRowTotal(${id})" style="text-align:center"/>
+      <input type="number" class="form-control" id="rc_${id}" value="${costPrice}" min="0" placeholder="Giá nhập" oninput="updateRowTotal(${id})"/>
+      <div class="row-total" id="rt_${id}">—</div>
+      <button type="button" onclick="removeRow(${id})" style="background:#FDF0EF;border:1px solid #e74c3c33;border-radius:6px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#c0392b;font-size:1rem">✕</button>
+    `;
+    document.getElementById('importRows').appendChild(div);
+    if (productId && costPrice) updateRowTotal(id);
+  }
+
+  function removeRow(id) {
+    const el = document.getElementById(`row_${id}`);
+    if (el) el.remove();
+    updateGrandTotal();
+  }
+
+  function updateRowTotal(id) {
+    const qty = parseInt(document.getElementById(`rq_${id}`).value) || 0;
+    const cost = parseFloat(document.getElementById(`rc_${id}`).value) || 0;
+    const total = qty * cost;
+    document.getElementById(`rt_${id}`).textContent = total > 0 ? DB.formatCurrency(total) : '—';
+    updateGrandTotal();
+  }
+
+  function updateGrandTotal() {
+    const rows = document.querySelectorAll('#importRows .import-row');
+    let total = 0;
+    rows.forEach(row => {
+      const id = row.id.replace('row_','');
+      const qty = parseInt(document.getElementById(`rq_${id}`)?.value) || 0;
+      const cost = parseFloat(document.getElementById(`rc_${id}`)?.value) || 0;
+      total += qty * cost;
+    });
+    document.getElementById('grandTotal').textContent = DB.formatCurrency(total);
+  }
+
+  function getRowsData() {
+    const rows = document.querySelectorAll('#importRows .import-row');
+    const items = [];
+    let valid = true;
+    rows.forEach(row => {
+      const id = row.id.replace('row_','');
+      const productId = parseInt(document.getElementById(`rp_${id}`)?.value);
+      const qty = parseInt(document.getElementById(`rq_${id}`)?.value);
+      const costPrice = parseFloat(document.getElementById(`rc_${id}`)?.value);
+      if (!productId || !qty || qty < 1 || !costPrice || costPrice < 0) { valid = false; return; }
+      items.push({ productId, qty, costPrice });
+    });
+    return { items, valid };
+  }
+
+  // ---- Add/Edit Modal ----
   function openAddModal() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('importDate').value = today;
+    document.getElementById('modalTitle').textContent = 'Tạo phiếu nhập hàng';
+    document.getElementById('editId').value = '';
+    document.getElementById('editDate').value = DB.today();
     document.getElementById('importRows').innerHTML = '';
-    importRowCount = 0;
-    addImportRow();
+    rowCount = 0;
+    addRow(); // Start with one empty row
+    updateGrandTotal();
     document.getElementById('importModal').classList.add('active');
   }
+
+  function openEditModal(id) {
+    const imp = DB.Imports.get(id);
+    if (!imp || imp.status !== 'pending') return DB.showToast('Chỉ có thể sửa phiếu đang chờ', 'error');
+    document.getElementById('modalTitle').textContent = `Sửa phiếu nhập #${String(id).slice(-6)}`;
+    document.getElementById('editId').value = id;
+    document.getElementById('editDate').value = imp.date || DB.today();
+    document.getElementById('importRows').innerHTML = '';
+    rowCount = 0;
+    (imp.items||[]).forEach(it => addRow(it.productId, it.qty, it.costPrice));
+    if (!imp.items || imp.items.length === 0) addRow();
+    updateGrandTotal();
+    document.getElementById('importModal').classList.add('active');
+  }
+
   function closeModal() { document.getElementById('importModal').classList.remove('active'); }
   function closeModalOutside(e) { if (e.target.id === 'importModal') closeModal(); }
 
-  function addImportRow() {
-    const products = DB.Products.list().filter(p => p.active !== false);
-    const opts = products.map(p => `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.emoji||''} ${p.name}</option>`).join('');
-    const row = document.createElement('tr');
-    row.id = `row_${importRowCount}`;
-    row.innerHTML = `
-      <td>
-        <select class="form-control prod-select" onchange="autoCost(this)" style="width:100%">
-          <option value="">-- Chọn sản phẩm --</option>${opts}
-        </select>
-      </td>
-      <td><input type="number" class="form-control qty-input" value="1" min="1" oninput="calcTotal()"/></td>
-      <td><input type="number" class="form-control cost-input" value="" min="0" placeholder="0" oninput="calcTotal()"/></td>
-      <td class="row-total" style="font-weight:600">0 đ</td>
-      <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)">✕</button></td>
-    `;
-    document.getElementById('importRows').appendChild(row);
-    importRowCount++;
-    calcTotal();
-  }
-
-  function autoCost(sel) {
-    const opt = sel.selectedOptions[0];
-    const cost = opt ? opt.dataset.cost : 0;
-    const row = sel.closest('tr');
-    row.querySelector('.cost-input').value = cost;
-    calcTotal();
-  }
-
-  function removeRow(btn) {
-    btn.closest('tr').remove();
-    calcTotal();
-  }
-
-  function calcTotal() {
-    let total = 0;
-    document.querySelectorAll('#importRows tr').forEach(row => {
-      const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
-      const cost = parseFloat(row.querySelector('.cost-input')?.value) || 0;
-      const lineTotal = qty * cost;
-      const cell = row.querySelector('.row-total');
-      if (cell) cell.textContent = DB.formatCurrency(lineTotal);
-      total += lineTotal;
-    });
-    document.getElementById('importTotal').textContent = DB.formatCurrency(total);
-  }
-
-  function getImportRows() {
-    const items = [];
-    document.querySelectorAll('#importRows tr').forEach(row => {
-      const productId = parseInt(row.querySelector('.prod-select')?.value);
-      const qty = parseInt(row.querySelector('.qty-input')?.value) || 0;
-      const costPrice = parseFloat(row.querySelector('.cost-input')?.value) || 0;
-      if (productId && qty > 0) items.push({ productId, qty, costPrice });
-    });
-    return items;
-  }
-
-  function saveImport(status) {
-    const date = document.getElementById('importDate').value;
+  function saveImport(completeNow) {
+    const date = document.getElementById('editDate').value;
+    const id = document.getElementById('editId').value;
     if (!date) return DB.showToast('Vui lòng chọn ngày nhập', 'error');
-    const items = getImportRows();
+
+    const { items, valid } = getRowsData();
     if (items.length === 0) return DB.showToast('Vui lòng thêm ít nhất 1 sản phẩm', 'error');
+    if (!valid) return DB.showToast('Vui lòng điền đầy đủ thông tin các hàng (sản phẩm, số lượng, giá nhập)', 'error');
 
-    const imports = DB.Imports.list();
-    const newImport = { id: Date.now(), date, items, status, createdAt: new Date().toISOString() };
+    // Check for duplicate products in same phieu
+    const productIds = items.map(i => i.productId);
+    if (new Set(productIds).size !== productIds.length) return DB.showToast('Mỗi sản phẩm chỉ được nhập 1 lần trong 1 phiếu', 'error');
 
-    if (status === 'completed') {
-      applyStockUpdate(items);
-    }
+    const data = id ? { id: parseInt(id), date, items } : { date, items };
+    const saved = DB.Imports.save(data);
 
-    imports.push(newImport);
-    localStorage.setItem('lf_imports', JSON.stringify(imports));
-    DB.showToast(status === 'completed' ? 'Đã hoàn thành phiếu nhập & cập nhật kho' : 'Đã lưu phiếu nhập nháp');
-    closeModal();
-    renderPage();
-  }
-
-  function applyStockUpdate(items) {
-    const products = DB.Products.list();
-    items.forEach(it => {
-      const idx = products.findIndex(p => p.id === it.productId);
-      if (idx >= 0) {
-        products[idx].stock = (products[idx].stock || 0) + it.qty;
-        if (it.costPrice > 0) products[idx].costPrice = it.costPrice;
+    if (completeNow) {
+      const result = DB.Imports.complete(saved.id);
+      if (result) {
+        DB.showToast('Phiếu nhập đã hoàn thành! Tồn kho & giá vốn đã được cập nhật.');
+      } else {
+        DB.showToast('Không thể hoàn thành phiếu', 'error');
       }
-    });
-    localStorage.setItem('lf_products', JSON.stringify(products));
-  }
-
-  function completeImport(id) {
-    const imports = DB.Imports.list();
-    const idx = imports.findIndex(i => i.id === id);
-    if (idx < 0) return;
-    applyStockUpdate(imports[idx].items);
-    imports[idx].status = 'completed';
-    localStorage.setItem('lf_imports', JSON.stringify(imports));
-    DB.showToast('Đã cập nhật trạng thái & cộng tồn kho');
+    } else {
+      DB.showToast(id ? 'Đã cập nhật phiếu nhập' : 'Đã lưu phiếu nhập nháp');
+    }
+    closeModal();
+    renderStats();
     renderPage();
   }
 
-  function deleteImport(id) {
-    if (!confirm('Bạn có chắc muốn xoá phiếu nhập này?')) return;
-    const imports = DB.Imports.list().filter(i => i.id !== id);
-    localStorage.setItem('lf_imports', JSON.stringify(imports));
-    DB.showToast('Đã xoá phiếu nhập');
-    renderPage();
-  }
-
-  function openDetailModal(id) {
-    const imp = DB.Imports.list().find(i => i.id === id);
+  // ---- View Modal ----
+  function openViewModal(id) {
+    const imp = DB.Imports.get(id);
     if (!imp) return;
     const products = DB.Products.list();
-    currentDetailId = id;
-    document.getElementById('detailTitle').textContent = `Phiếu nhập #${id.toString().slice(-6)}`;
-    const total = imp.items.reduce((s, it) => s + it.qty * it.costPrice, 0);
-    document.getElementById('detailBody').innerHTML = `
-      <div style="display:flex;gap:2rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <div><span style="color:var(--muted)">Ngày nhập:</span> <strong>${imp.date || '—'}</strong></div>
-        <div><span style="color:var(--muted)">Ngày tạo:</span> <strong>${DB.formatDate(imp.createdAt)}</strong></div>
-        <div><span style="color:var(--muted)">Trạng thái:</span> <span class="badge ${imp.status === 'completed' ? 'badge-success' : 'badge-warning'}">${imp.status === 'completed' ? 'Hoàn thành' : 'Chờ xử lý'}</span></div>
+    document.getElementById('viewModalTitle').textContent = `Phiếu nhập #${String(imp.id).slice(-6)}`;
+    const total = calcTotal(imp.items);
+    document.getElementById('viewModalBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem;font-size:.87rem">
+        <div><span style="color:var(--muted)">Mã phiếu:</span> <strong>#${String(imp.id).slice(-6)}</strong></div>
+        <div><span style="color:var(--muted)">Ngày nhập:</span> <strong>${DB.formatDate(imp.date || imp.createdAt)}</strong></div>
+        <div><span style="color:var(--muted)">Trạng thái:</span>
+          <span class="badge ${imp.status === 'pending' ? 'badge-warning' : 'badge-success'}">${imp.status === 'pending' ? 'Chờ xử lý' : 'Hoàn thành'}</span>
+        </div>
+        ${imp.doneAt ? `<div><span style="color:var(--muted)">Hoàn thành lúc:</span> <strong>${DB.formatDate(imp.doneAt)}</strong></div>` : ''}
       </div>
       <table class="admin-table">
-        <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Giá vốn</th><th>Thành tiền</th></tr></thead>
+        <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Giá nhập</th><th>Thành tiền</th></tr></thead>
         <tbody>
-          ${imp.items.map(it => {
-            const p = products.find(x => x.id === it.productId);
+          ${(imp.items||[]).map(it => {
+            const p = products.find(x => x.id == it.productId);
             return `<tr>
-              <td>${p ? `${p.emoji||''} ${p.name}` : `SP #${it.productId}`}</td>
+              <td>${p ? `${p.emoji||''} ${p.name}` : `ID ${it.productId}`}</td>
               <td>${it.qty}</td>
               <td>${DB.formatCurrency(it.costPrice)}</td>
               <td style="font-weight:600">${DB.formatCurrency(it.qty * it.costPrice)}</td>
@@ -310,16 +398,69 @@
         </tfoot>
       </table>
     `;
-    const footer = document.getElementById('detailFooter');
-    footer.innerHTML = `<button class="btn btn-outline" onclick="closeDetailModal()">Đóng</button>`;
+    const footer = document.getElementById('viewModalFooter');
+    footer.innerHTML = `<button class="btn btn-outline" onclick="closeViewModal()">Đóng</button>`;
     if (imp.status === 'pending') {
-      footer.innerHTML += `<button class="btn btn-success" onclick="completeImport(${id});closeDetailModal()">Hoàn thành & cập nhật kho</button>`;
+      footer.innerHTML += `
+        <button class="btn btn-secondary" onclick="closeViewModal();openEditModal(${imp.id})">✏️ Sửa</button>
+        <button class="btn btn-primary" onclick="closeViewModal();openCompleteModal(${imp.id})">✅ Hoàn thành</button>`;
     }
-    document.getElementById('detailModal').classList.add('active');
+    document.getElementById('viewModal').classList.add('active');
   }
-  function closeDetailModal() { document.getElementById('detailModal').classList.remove('active'); }
-  function closeDetailOutside(e) { if (e.target.id === 'detailModal') closeDetailModal(); }
+  function closeViewModal() { document.getElementById('viewModal').classList.remove('active'); }
+  function closeViewOutside(e) { if (e.target.id === 'viewModal') closeViewModal(); }
 
+  // ---- Complete Confirm ----
+  function openCompleteModal(id) {
+    const imp = DB.Imports.get(id);
+    if (!imp) return;
+    completeTargetId = id;
+    const products = DB.Products.list();
+    const preview = (imp.items||[]).map(it => {
+      const p = products.find(x => x.id == it.productId);
+      if (!p) return '';
+      const currentStock = p.stock || 0;
+      const currentCost = p.costPrice || it.costPrice;
+      const newStock = currentStock + it.qty;
+      const newCost = currentStock > 0
+        ? Math.round((currentStock * currentCost + it.qty * it.costPrice) / newStock)
+        : it.costPrice;
+      return `
+        <tr>
+          <td>${p.emoji||''} ${p.name}</td>
+          <td style="text-align:center">+${it.qty}</td>
+          <td style="text-align:center">${currentStock} → <strong>${newStock}</strong></td>
+          <td style="text-align:right;font-size:.85rem">${DB.formatCurrency(currentCost)} → <strong>${DB.formatCurrency(newCost)}</strong></td>
+        </tr>`;
+    }).join('');
+    document.getElementById('completeModalBody').innerHTML = `
+      <p style="margin-bottom:1rem">Xác nhận hoàn thành phiếu nhập <strong>#${String(id).slice(-6)}</strong>?</p>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem">Tồn kho và giá vốn sẽ được cập nhật theo bình quân gia quyền:</p>
+      <div style="overflow-x:auto">
+        <table class="admin-table" style="font-size:.83rem">
+          <thead><tr><th>Sản phẩm</th><th style="text-align:center">Nhập</th><th style="text-align:center">Tồn kho</th><th style="text-align:right">Giá vốn</th></tr></thead>
+          <tbody>${preview}</tbody>
+        </table>
+      </div>
+    `;
+    document.getElementById('completeModal').classList.add('active');
+  }
+  function closeCompleteModal() { document.getElementById('completeModal').classList.remove('active'); completeTargetId = null; }
+  function closeCompleteOutside(e) { if (e.target.id === 'completeModal') closeCompleteModal(); }
+
+  function confirmComplete() {
+    const result = DB.Imports.complete(completeTargetId);
+    if (result) {
+      DB.showToast('Hoàn thành phiếu nhập! Tồn kho & giá vốn đã cập nhật.');
+    } else {
+      DB.showToast('Lỗi: không thể hoàn thành phiếu', 'error');
+    }
+    closeCompleteModal();
+    renderStats();
+    renderPage();
+  }
+
+  renderStats();
   renderPage();
 </script>
 </body>

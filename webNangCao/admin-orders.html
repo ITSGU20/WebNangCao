@@ -32,6 +32,7 @@
           <input type="date" id="dateFrom" class="form-control" style="width:160px" onchange="renderTable()" title="Từ ngày"/>
           <input type="date" id="dateTo" class="form-control" style="width:160px" onchange="renderTable()" title="Đến ngày"/>
           <button class="btn btn-outline" onclick="clearFilters()">Xoá lọc</button>
+          <button class="btn btn-outline" id="sortAddrBtn" onclick="toggleSortByAddress()" title="Sắp xếp theo địa chỉ (phường/quận)">📍 Sắp theo địa chỉ</button>
         </div>
       </div>
 
@@ -82,6 +83,15 @@
 
   let currentPage = 1;
   const PAGE_SIZE = 10;
+  let sortByAddress = false;
+
+  function toggleSortByAddress() {
+    sortByAddress = !sortByAddress;
+    const btn = document.getElementById('sortAddrBtn');
+    btn.style.background = sortByAddress ? 'var(--chocolate)' : '';
+    btn.style.color = sortByAddress ? 'white' : '';
+    renderPage();
+  }
 
   const STATUS_FLOW = {
     new: { next: 'processing', label: 'Chuyển sang Xử lý', btnClass: 'btn-primary' },
@@ -104,7 +114,15 @@
         const matchTo = !to || oDate <= to;
         return matchSearch && matchStatus && matchFrom && matchTo;
       })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .sort((a, b) => {
+        if (sortByAddress) {
+          // Sort by last segment of address (usually quận/phường)
+          const addrA = (a.address || '').split(',').pop().trim().toLowerCase();
+          const addrB = (b.address || '').split(',').pop().trim().toLowerCase();
+          return addrA.localeCompare(addrB, 'vi');
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
   }
 
   function renderStats() {
