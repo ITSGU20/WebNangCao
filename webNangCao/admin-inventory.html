@@ -11,6 +11,11 @@
     .stock-bar-wrap { background: var(--border); border-radius: 100px; height: 8px; width: 120px; overflow: hidden; }
     .stock-bar { height: 100%; border-radius: 100px; transition: width .3s; }
     .low-stock-card { border-left: 4px solid #e74c3c; }
+    
+    /* CSS cho bảng báo cáo X-N-T */
+    .report-table th, .report-table td { border-bottom: 1px solid var(--border); padding: 0.75rem; text-align: right; }
+    .report-table th:first-child, .report-table td:first-child { text-align: left; }
+    .report-table tbody tr:hover { background: var(--gray-light); }
   </style>
 </head>
 <body class="admin-body">
@@ -23,33 +28,33 @@
     <div id="topbar-container"></div>
     <div class="admin-content">
 
-      <!-- Summary -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem" id="statsRow"></div>
 
-      <!-- Low stock warnings -->
       <div class="card low-stock-card" id="lowStockAlert" style="margin-bottom:1.5rem;display:none">
         <h4 style="color:#e74c3c;margin-bottom:.75rem">⚠️ Sản phẩm sắp hết hàng</h4>
         <div id="lowStockList" style="display:flex;flex-wrap:wrap;gap:.5rem"></div>
       </div>
 
-      <!-- Filter bar -->
       <div class="filter-bar card" style="margin-bottom:1.5rem">
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
-          <input type="text" id="searchInput" class="form-control" placeholder="Tìm sản phẩm…" style="width:240px" oninput="renderTable()"/>
-          <select id="catFilter" class="form-control" style="width:200px" onchange="renderTable()">
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm sản phẩm…" style="width:240px"/>
+          <select id="catFilter" class="form-control" style="width:180px">
             <option value="">Tất cả danh mục</option>
           </select>
-          <select id="stockFilter" class="form-control" style="width:200px" onchange="renderTable()">
+          <select id="stockFilter" class="form-control" style="width:180px">
             <option value="">Tất cả mức tồn kho</option>
             <option value="out">Hết hàng (0)</option>
             <option value="low">Sắp hết (≤ ngưỡng)</option>
             <option value="ok">Còn hàng (>10)</option>
           </select>
+          <button class="btn btn-secondary" onclick="renderTable()">🔍 Tìm</button>
+
           <div style="display:flex;align-items:center;gap:.5rem;margin-left:auto">
             <label style="font-size:.82rem;color:var(--muted);white-space:nowrap">⚠️ Ngưỡng sắp hết:</label>
             <input type="number" id="thresholdInput" class="form-control" value="10" min="1" max="999"
                    style="width:75px;text-align:center" onchange="applyThreshold()" title="Số lượng được coi là sắp hết hàng"/>
-            <button class="btn btn-primary" onclick="openAdjustModal(null)">± Điều chỉnh tồn kho</button>
+            
+            <button class="btn btn-primary" onclick="openReportModal()" style="margin-left: 0.5rem">📊 Báo cáo X-N-T</button>
           </div>
         </div>
       </div>
@@ -62,8 +67,8 @@
               <th>Danh mục</th>
               <th>Tồn kho</th>
               <th>Mức tồn</th>
-              <th>Giá vốn</th>
               <th>Giá trị tồn</th>
+              <th>Cập nhật cuối</th>
               <th>Thao tác</th>
             </tr>
           </thead>
@@ -76,49 +81,57 @@
   </div>
 </div>
 
-<!-- Adjust Stock Modal -->
-<div class="modal-overlay" id="adjustModal" onclick="closeAdjustOutside(event)">
-  <div class="modal" style="max-width:460px">
+<div class="modal-overlay" id="reportModal" onclick="closeReportOutside(event)">
+  <div class="modal" style="max-width:850px">
     <div class="modal-header">
-      <h3>Điều chỉnh tồn kho</h3>
-      <button class="modal-close" onclick="closeAdjustModal()">✕</button>
+      <h3>Báo cáo Xuất - Nhập - Tồn</h3>
+      <button class="modal-close" onclick="closeReportModal()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Sản phẩm *</label>
-        <select id="adjProductId" class="form-control" onchange="updateCurrentStock()"></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Loại điều chỉnh</label>
-        <select id="adjType" class="form-control">
-          <option value="add">Cộng vào</option>
-          <option value="subtract">Trừ đi</option>
-          <option value="set">Đặt về mức</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Số lượng *</label>
-        <input type="number" id="adjQty" class="form-control" placeholder="0" min="0"/>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Ghi chú</label>
-        <input type="text" id="adjNote" class="form-control" placeholder="Lý do điều chỉnh (tuỳ chọn)"/>
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:1rem">
-        <div style="display:flex;justify-content:space-between">
-          <span style="color:var(--muted)">Tồn kho hiện tại:</span>
-          <strong id="currentStockDisplay">—</strong>
+     <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label" style="white-space: nowrap;">Từ ngày</label>
+          <input type="date" id="reportFrom" class="form-control" style="width: 100%; box-sizing: border-box;"/>
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label" style="white-space: nowrap;">Đến ngày</label>
+          <input type="date" id="reportTo" class="form-control" style="width: 100%; box-sizing: border-box;"/>
+        </div>
+        <div style="flex: 1.5; min-width: 160px;">
+          <label class="form-label" style="white-space: nowrap;">Danh mục</label>
+          <select id="reportCat" class="form-control" style="width: 100%; box-sizing: border-box;"></select>
+        </div>
+        <div style="flex: 2; min-width: 180px;">
+          <label class="form-label" style="white-space: nowrap;">Tên sản phẩm</label>
+          <input type="text" id="reportSearch" class="form-control" placeholder="Tên sản phẩm..." style="width: 100%; box-sizing: border-box;"/>
+        </div>
+        <div style="flex: none;">
+          <button class="btn btn-primary" onclick="generateReport()" style="white-space: nowrap; height: 42px;">🔍 Lọc báo cáo</button>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeAdjustModal()">Huỷ</button>
-      <button class="btn btn-primary" onclick="applyAdjust()">Xác nhận</button>
+      </div>
+      
+      <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+        <table class="report-table" style="width: 100%; border-collapse: collapse;">
+          <thead style="position: sticky; top: 0; background: #fafafa; z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <tr>
+              <th>Sản phẩm</th>
+              <th>Tồn đầu kỳ</th>
+              <th>Nhập trong kỳ</th>
+              <th>Xuất trong kỳ</th>
+              <th>Tồn cuối kỳ</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
+      </div>
+      <p style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem">
+        * Tồn cuối kỳ = Tồn tại ngày kết thúc. Tồn đầu kỳ = Tồn tại ngày bắt đầu.
+      </p>
     </div>
   </div>
 </div>
 
-<!-- History Modal -->
 <div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
   <div class="modal" style="max-width:680px">
     <div class="modal-header">
@@ -139,34 +152,18 @@
 
   let currentPage = 1;
   const PAGE_SIZE = 15;
-  // Configurable threshold - reads from input
   function getThreshold() { return parseInt(document.getElementById('thresholdInput')?.value) || 10; }
   function applyThreshold() { renderStats(); renderLowStockAlert(); renderPage(); }
   const HISTORY_KEY = 'lf_stock_history';
 
+  // Hàm đọc dữ liệu lịch sử XNT do các trang khác (Đơn hàng, Nhập kho) tự động lưu vào
   function getHistory() { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-  function addHistory(entry) {
-    const h = getHistory();
-    h.unshift({ ...entry, id: Date.now(), at: new Date().toISOString() });
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 200)));
-  }
 
   function populateCatFilter() {
     const cats = DB.Categories.list();
-    document.getElementById('catFilter').innerHTML = '<option value="">Tất cả danh mục</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  }
-
-  function populateProductSelect(selectedId) {
-    const products = DB.Products.list();
-    document.getElementById('adjProductId').innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + products.map(p => `<option value="${p.id}">${p.emoji||''} ${p.name} (tồn: ${p.stock||0})</option>`).join('');
-    if (selectedId) document.getElementById('adjProductId').value = selectedId;
-    updateCurrentStock();
-  }
-
-  function updateCurrentStock() {
-    const id = parseInt(document.getElementById('adjProductId').value);
-    const p = id ? DB.Products.list().find(x => x.id === id) : null;
-    document.getElementById('currentStockDisplay').textContent = p ? p.stock || 0 : '—';
+    const opts = '<option value="">Tất cả danh mục</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('catFilter').innerHTML = opts;
+    document.getElementById('reportCat').innerHTML = opts;
   }
 
   function renderStats() {
@@ -206,10 +203,7 @@
       </span>`).join('');
   }
 
-  function filterStock(v) {
-    document.getElementById('stockFilter').value = v;
-    renderTable();
-  }
+  function filterStock(v) { document.getElementById('stockFilter').value = v; renderTable(); }
 
   function getFiltered() {
     const search = document.getElementById('searchInput').value.toLowerCase();
@@ -219,7 +213,7 @@
       const matchSearch = !search || p.name.toLowerCase().includes(search);
       const matchCat = !catId || String(p.catId) === catId;
       const s = p.stock || 0;
-      const matchStock = !stockF || (stockF === 'out' ? s <= 0 : stockF === 'low' ? s > 0 && s <= 10 : s > 10);
+      const matchStock = !stockF || (stockF === 'out' ? s <= 0 : stockF === 'low' ? s > 0 && s <= getThreshold() : s > getThreshold());
       return matchSearch && matchCat && matchStock;
     }).sort((a, b) => (a.stock||0) - (b.stock||0));
   }
@@ -229,9 +223,11 @@
   function renderPage() {
     const cats = DB.Categories.list();
     const filtered = getFiltered();
+    const history = getHistory(); // Lấy lịch sử để kiểm tra lần cập nhật cuối
     const paged = DB.paginate(filtered, currentPage, PAGE_SIZE);
     const maxStock = Math.max(...DB.Products.list().map(p => p.stock||0), 1);
     const tbody = document.getElementById('tableBody');
+    
     if (paged.items.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Không có sản phẩm nào</td></tr>';
     } else {
@@ -239,27 +235,25 @@
         const cat = cats.find(c => c.id === p.catId);
         const s = p.stock || 0;
         const pct = Math.min(100, Math.round(s / maxStock * 100));
-        const barColor = s <= 0 ? '#e74c3c' : s <= 10 ? '#f39c12' : '#27ae60';
+        const barColor = s <= 0 ? '#e74c3c' : s <= getThreshold() ? '#f39c12' : '#27ae60';
         const stockValue = s * (p.costPrice || 0);
+        
+        // Dò ngày thay đổi tồn kho gần nhất
+        const pHist = history.find(h => h.productId === p.id);
+        const lastUpdated = pHist ? DB.formatDate(pHist.at) : '<span style="color:var(--muted)">Chưa có dữ liệu</span>';
+
         return `
           <tr>
             <td><div style="display:flex;align-items:center;gap:.5rem"><span>${p.emoji||'🍰'}</span><strong>${p.name}</strong></div></td>
             <td>${cat ? cat.name : '—'}</td>
+            <td><span style="font-size:1.1rem;font-weight:700;color:${barColor}">${s}</span></td>
             <td>
-              <span style="font-size:1.1rem;font-weight:700;color:${barColor}">${s}</span>
+              <div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${barColor}"></div></div>
             </td>
-            <td>
-              <div class="stock-bar-wrap">
-                <div class="stock-bar" style="width:${pct}%;background:${barColor}"></div>
-              </div>
-            </td>
-            <td style="color:var(--muted)">${p.costPrice ? DB.formatCurrency(p.costPrice) : '—'}</td>
             <td style="font-weight:600">${stockValue > 0 ? DB.formatCurrency(stockValue) : '—'}</td>
+            <td style="font-size:.85rem">${lastUpdated}</td>
             <td>
-              <div style="display:flex;gap:.5rem">
-                <button class="btn btn-sm btn-outline" onclick="openAdjustModal(${p.id})">Điều chỉnh</button>
-                <button class="btn btn-sm btn-outline" onclick="openHistoryModal(${p.id})">Lịch sử</button>
-              </div>
+              <button class="btn btn-sm btn-outline" onclick="openHistoryModal(${p.id})">Lịch sử</button>
             </td>
           </tr>`;
       }).join('');
@@ -267,64 +261,133 @@
     document.getElementById('paginationContainer').innerHTML = DB.renderPagination(paged, p => { currentPage = p; renderPage(); });
   }
 
-  function openAdjustModal(productId) {
-    populateProductSelect(productId);
-    document.getElementById('adjType').value = 'add';
-    document.getElementById('adjQty').value = '';
-    document.getElementById('adjNote').value = '';
-    document.getElementById('adjustModal').classList.add('active');
-  }
-  function closeAdjustModal() { document.getElementById('adjustModal').classList.remove('active'); }
-  function closeAdjustOutside(e) { if (e.target.id === 'adjustModal') closeAdjustModal(); }
+  // ---- CÁC HÀM XỬ LÝ BÁO CÁO XUẤT NHẬP TỒN ----
+  function openReportModal() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const formatDateObj = (d) => {
+        const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+        return (new Date(d - tzOffset)).toISOString().split('T')[0];
+    };
 
-  function applyAdjust() {
-    const productId = parseInt(document.getElementById('adjProductId').value);
-    const type = document.getElementById('adjType').value;
-    const qty = parseInt(document.getElementById('adjQty').value);
-    const note = document.getElementById('adjNote').value.trim();
-    if (!productId) return DB.showToast('Vui lòng chọn sản phẩm', 'error');
-    if (isNaN(qty) || qty < 0) return DB.showToast('Vui lòng nhập số lượng hợp lệ', 'error');
+    document.getElementById('reportFrom').value = formatDateObj(firstDay);
+    document.getElementById('reportTo').value = formatDateObj(today);
+    document.getElementById('reportCat').value = '';
+    document.getElementById('reportSearch').value = '';
+    
+    document.getElementById('reportModal').classList.add('active');
+    generateReport(); // Chạy lần đầu lúc mở
+  }
+
+  function closeReportModal() { document.getElementById('reportModal').classList.remove('active'); }
+  function closeReportOutside(e) { if (e.target.id === 'reportModal') closeReportModal(); }
+
+  function generateReport() {
+    const fromStr = document.getElementById('reportFrom').value;
+    const toStr = document.getElementById('reportTo').value;
+    const catId = document.getElementById('reportCat').value;
+    const search = document.getElementById('reportSearch').value.toLowerCase();
+
+    const tFrom = fromStr ? new Date(fromStr + 'T00:00:00').getTime() : 0;
+    const tTo = toStr ? new Date(toStr + 'T23:59:59').getTime() : Date.now();
 
     const products = DB.Products.list();
-    const idx = products.findIndex(p => p.id === productId);
-    if (idx < 0) return;
-    const before = products[idx].stock || 0;
-    let after = before;
-    if (type === 'add') after = before + qty;
-    else if (type === 'subtract') after = Math.max(0, before - qty);
-    else if (type === 'set') after = qty;
+    const history = getHistory();
+    const tbody = document.getElementById('reportTableBody');
 
-    products[idx].stock = after;
-    localStorage.setItem('lf_products', JSON.stringify(products));
-    addHistory({ productId, productName: products[idx].name, type, qty, before, after, note });
-    DB.showToast(`Đã cập nhật tồn kho: ${before} → ${after}`);
-    closeAdjustModal();
-    renderStats();
-    renderLowStockAlert();
-    renderPage();
+    let reportRows = '';
+
+    products.forEach(p => {
+      if (catId && String(p.catId) !== catId) return;
+      if (search && !p.name.toLowerCase().includes(search)) return;
+
+      const pHistory = history.filter(h => h.productId === p.id);
+      let currentStock = p.stock || 0;
+      
+      let deltaAfterToDate = 0;
+      let totalIn = 0;
+      let totalOut = 0;
+
+      // Phân tích lịch sử: các nghiệp vụ Tăng (import, add) và Giảm (sale, order, subtract)
+      pHistory.forEach(h => {
+        let tLog = new Date(h.at).getTime();
+        let delta = 0;
+        
+        if (['add', 'import'].includes(h.type)) delta = h.qty;
+        else if (['subtract', 'sale', 'order'].includes(h.type)) delta = -h.qty;
+        else if (h.type === 'set') delta = h.after - h.before; // Kiểm kê tự động điều chỉnh
+
+        if (tLog > tTo) {
+          deltaAfterToDate += delta;
+        } else if (tLog >= tFrom && tLog <= tTo) {
+          if (delta > 0) totalIn += delta;
+          if (delta < 0) totalOut += Math.abs(delta);
+        }
+      });
+
+      let endStock = currentStock - deltaAfterToDate;
+      let startStock = endStock - totalIn + totalOut;
+
+      if (startStock === 0 && endStock === 0 && totalIn === 0 && totalOut === 0) return;
+
+      reportRows += `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span>${p.emoji||'📦'}</span>
+              <strong>${p.name}</strong>
+            </div>
+          </td>
+          <td style="color:var(--muted)">${startStock}</td>
+          <td style="color:#27ae60; font-weight:600">+${totalIn}</td>
+          <td style="color:#e74c3c; font-weight:600">-${totalOut}</td>
+          <td style="font-weight:700; font-size:1.1rem">${endStock}</td>
+        </tr>
+      `;
+    });
+
+    if (!reportRows) {
+      reportRows = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Không có dữ liệu trong khoảng thời gian này</td></tr>';
+    }
+
+    tbody.innerHTML = reportRows;
   }
+  // ----------------------------------------------
 
   function openHistoryModal(productId) {
     const p = DB.Products.list().find(x => x.id === productId);
     const history = getHistory().filter(h => h.productId === productId);
     document.getElementById('historyTitle').textContent = `Lịch sử: ${p ? p.name : 'Sản phẩm'}`;
+    
     if (history.length === 0) {
-      document.getElementById('historyBody').innerHTML = '<p style="text-align:center;color:var(--muted);padding:2rem">Chưa có lịch sử điều chỉnh</p>';
+      document.getElementById('historyBody').innerHTML = '<p style="text-align:center;color:var(--muted);padding:2rem">Chưa có phát sinh nhập/xuất kho</p>';
     } else {
-      const typeLabel = { add: 'Cộng', subtract: 'Trừ', set: 'Đặt về' };
+      // Dịch các mã nghiệp vụ thành tên gọi thân thiện
+      const typeLabel = { 
+        add: 'Nhập (Lệch kho)', 
+        subtract: 'Xuất (Lệch kho)', 
+        set: 'Kiểm kê',
+        import: 'Nhập hàng',
+        order: 'Đơn hàng (Bán)',
+        sale: 'Xuất bán'
+      };
+      
       document.getElementById('historyBody').innerHTML = `
         <table class="admin-table">
-          <thead><tr><th>Thời gian</th><th>Loại</th><th>Số lượng</th><th>Trước</th><th>Sau</th><th>Ghi chú</th></tr></thead>
+          <thead><tr><th>Thời gian</th><th>Nghiệp vụ</th><th>Số lượng</th><th>Trước</th><th>Sau</th><th>Ghi chú</th></tr></thead>
           <tbody>
-            ${history.slice(0, 50).map(h => `
+            ${history.slice(0, 50).map(h => {
+              const displayType = typeLabel[h.type] || h.type;
+              return `
               <tr>
                 <td style="font-size:.85rem">${DB.formatDate(h.at)}</td>
-                <td>${typeLabel[h.type]||h.type}</td>
+                <td><span class="badge badge-secondary">${displayType}</span></td>
                 <td style="font-weight:600">${h.qty}</td>
                 <td>${h.before}</td>
                 <td style="font-weight:600;color:${h.after > h.before ? '#27ae60' : '#e74c3c'}">${h.after}</td>
-                <td style="color:var(--muted)">${h.note || '—'}</td>
-              </tr>`).join('')}
+                <td style="color:var(--muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${h.note || ''}">${h.note || '—'}</td>
+              </tr>`
+            }).join('')}
           </tbody>
         </table>`;
     }
@@ -336,7 +399,7 @@
   populateCatFilter();
   renderStats();
   renderLowStockAlert();
-  renderPage();
+  renderPage(); // Load bảng lần đầu tiên
 </script>
 </body>
 </html>

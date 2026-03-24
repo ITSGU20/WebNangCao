@@ -7,6 +7,93 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* ----- CSS mới cho khung thêm ảnh giống image_0.png ----- */
+    .image-upload-wrapper {
+      margin-top: 0.5rem;
+    }
+
+    /* Khung dropzone (viền nét đứt màu nâu nhạt giống thiết kế gốc) */
+    .image-upload-dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border: 2px dashed #d3c7bd; /* Đổi thành màu viền nâu nhạt/be */
+      border-radius: 8px; 
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background-color: #fdfcfb; /* Nền hơi ngả màu ấm nhẹ */
+    }
+
+    .image-upload-dropzone:hover {
+      border-color: #a89483; /* Viền nâu đậm hơn một chút khi hover chuột */
+      background-color: #faf8f5;
+    }
+
+    /* Phần tử icon */
+    .image-upload-dropzone .upload-icon {
+      font-size: 2.5rem; 
+      margin-bottom: 0.25rem;
+    }
+
+    /* Văn bản hướng dẫn ("Nhấn hoặc kéo thả ảnh...") */
+    .image-upload-dropzone .upload-text {
+      font-weight: 500;
+      color: #837367; /* Màu chữ xám nâu */
+    }
+
+    /* Văn bản thông tin file ("JPG, PNG...") */
+    .image-upload-dropzone .upload-info {
+      font-size: 0.85rem;
+      color: #a69a90; /* Màu chữ chú thích nhạt hơn */
+    }
+
+    /* Khung preview ảnh */
+    .image-preview-container {
+      position: relative;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 0.5rem;
+      text-align: center;
+      display: none; /* Ẩn mặc định */
+      margin-top: 10px;
+    }
+
+    .image-preview-container img {
+      max-width: 100%;
+      max-height: 180px; /* Chiều cao tối đa */
+      border-radius: 6px;
+      object-fit: cover; /* Giữ tỷ lệ ảnh */
+    }
+
+    /* Nút xoá ảnh */
+    .remove-image-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(255, 255, 255, 0.8);
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      color: #f44336; /* Màu đỏ */
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: background 0.3s;
+    }
+
+    .remove-image-btn:hover {
+      background: rgba(255, 255, 255, 1);
+    }
+  </style>
 </head>
 <body class="admin-body">
 <script src="data.js"></script>
@@ -51,7 +138,6 @@
   </div>
 </div>
 
-<!-- Add/Edit Modal -->
 <div class="modal-overlay" id="catModal" onclick="closeModalOutside(event)">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
@@ -64,6 +150,27 @@
         <label class="form-label">Emoji</label>
         <input type="text" id="editEmoji" class="form-control" placeholder="🎂" style="width:80px;font-size:1.5rem;text-align:center"/>
       </div>
+      
+      <div class="form-group">
+        <label class="form-label">Hình ảnh danh mục</label>
+        <div class="image-upload-wrapper">
+          <input type="file" id="editImageFile" accept="image/jpeg, image/png, image/webp" style="display:none" onchange="handleImageUpload(event)"/>
+          
+          <input type="hidden" id="editImageData"/>
+
+          <label for="editImageFile" class="image-upload-dropzone" id="imageUploadDropzone">
+              <div class="upload-icon">📷</div>
+              <div class="upload-text">Nhấn hoặc kéo thả ảnh vào đây</div>
+              <div class="upload-info">JPG, PNG, WEBP • Tối đa 5MB</div>
+          </label>
+
+          <div class="image-preview-container" id="imagePreviewContainer">
+              <img id="imagePreview" src="" alt="Preview"/>
+              <button type="button" class="remove-image-btn" onclick="removeImage()">✕</button>
+          </div>
+        </div>
+      </div>
+      
       <div class="form-group">
         <label class="form-label">Tên danh mục *</label>
         <input type="text" id="editName" class="form-control" placeholder="Bánh kem sinh nhật"/>
@@ -87,7 +194,6 @@
   </div>
 </div>
 
-<!-- Delete Confirm -->
 <div class="modal-overlay" id="deleteModal" onclick="closeDeleteOutside(event)">
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
@@ -113,6 +219,53 @@
   let currentPage = 1;
   const PAGE_SIZE = 10;
   let deleteTargetId = null;
+
+  // ----- CÁC HÀM XỬ LÝ ẢNH MỚI THÊM -----
+
+  // Hàm xử lý khi người dùng chọn file
+  function handleImageUpload(event) {
+    const file = event.target.files[0];
+    const dropzone = document.getElementById('imageUploadDropzone');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('imagePreview');
+    const hiddenDataInput = document.getElementById('editImageData');
+
+    if (file) {
+      // Kiểm tra kích thước file (5MB = 5 * 1024 * 1024 bytes)
+      if (file.size > 5 * 1024 * 1024) {
+        if (typeof DB !== 'undefined' && DB.showToast) {
+          DB.showToast('Kích thước ảnh không được vượt quá 5MB', 'error');
+        } else {
+          alert('Kích thước ảnh không được vượt quá 5MB');
+        }
+        event.target.value = ''; // Xoá file input
+        return;
+      }
+
+      // Đọc file thành Base64
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        previewImg.src = e.target.result; // Gán chuỗi Base64 vào src ảnh
+        hiddenDataInput.value = e.target.result; // Lưu vào input ẩn
+        dropzone.style.display = 'none'; // Ẩn khung dropzone
+        previewContainer.style.display = 'block'; // Hiển thị khung preview
+      }
+      reader.readAsDataURL(file);
+    } else {
+      removeImage();
+    }
+  }
+
+  // Hàm xoá ảnh đã chọn
+  function removeImage() {
+    document.getElementById('editImageFile').value = ''; // Xoá file input
+    document.getElementById('editImageData').value = ''; // Xoá dữ liệu ẩn
+    document.getElementById('imagePreview').src = ''; // Xoá src ảnh preview
+    document.getElementById('imageUploadDropzone').style.display = 'flex'; // Hiện lại dropzone
+    document.getElementById('imagePreviewContainer').style.display = 'none'; // Ẩn preview
+  }
+
+  // ------------------------------------------
 
   function getFiltered() {
     const search = document.getElementById('searchInput').value.toLowerCase();
@@ -163,6 +316,10 @@
     document.getElementById('editName').value = '';
     document.getElementById('editDesc').value = '';
     document.getElementById('editActive').value = 'true';
+    
+    // CẬP NHẬT: Reset trạng thái ảnh khi thêm mới
+    removeImage();
+
     document.getElementById('catModal').classList.add('active');
   }
 
@@ -175,6 +332,22 @@
     document.getElementById('editName').value = c.name;
     document.getElementById('editDesc').value = c.desc || '';
     document.getElementById('editActive').value = String(c.active !== false);
+    
+    // CẬP NHẬT: Tải ảnh cũ lên khung preview (nếu có)
+    const dropzone = document.getElementById('imageUploadDropzone');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('imagePreview');
+    const hiddenDataInput = document.getElementById('editImageData');
+
+    if (c.image) {
+      previewImg.src = c.image; // Giả sử 'image' lưu chuỗi Base64
+      hiddenDataInput.value = c.image;
+      dropzone.style.display = 'none';
+      previewContainer.style.display = 'block';
+    } else {
+      removeImage();
+    }
+
     document.getElementById('catModal').classList.add('active');
   }
 
@@ -187,14 +360,20 @@
     const name = document.getElementById('editName').value.trim();
     const desc = document.getElementById('editDesc').value.trim();
     const active = document.getElementById('editActive').value === 'true';
+    
+    // CẬP NHẬT: Lấy chuỗi dữ liệu ảnh Base64
+    const image = document.getElementById('editImageData').value;
+
     if (!name) return DB.showToast('Vui lòng nhập tên danh mục', 'error');
 
     const cats = DB.Categories.list();
     if (id) {
       const idx = cats.findIndex(c => c.id === parseInt(id));
-      if (idx >= 0) { cats[idx] = { ...cats[idx], emoji, name, desc, active }; }
+      // Thêm thuộc tính image vào object đã cập nhật
+      if (idx >= 0) { cats[idx] = { ...cats[idx], emoji, name, desc, active, image }; }
     } else {
-      cats.push({ id: Date.now(), emoji, name, desc, active: true });
+      // Thêm thuộc tính image vào object mới
+      cats.push({ id: Date.now(), emoji, name, desc, active: true, image });
     }
     localStorage.setItem('lf_categories', JSON.stringify(cats));
     DB.showToast(id ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công');
