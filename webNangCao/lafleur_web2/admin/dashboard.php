@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/admin_layout.php';
 
 session_init();
 
@@ -89,7 +89,7 @@ function short(float $n): string {
 <div class="card mt-3">
   <h3 style="font-family:var(--font-display);font-size:1.2rem;color:var(--chocolate);margin-bottom:1.2rem">Thao tác nhanh</h3>
   <div style="display:flex;gap:1rem;flex-wrap:wrap">
-    <a href="<?= ADMIN_URL ?>/products.php" class="btn btn-caramel">🎂 Thêm sản phẩm</a>
+    <a href="<?= ADMIN_URL ?>/admin_products.php" class="btn btn-caramel">🎂 Thêm sản phẩm</a>
     <a href="<?= ADMIN_URL ?>/import.php" class="btn btn-primary">📥 Nhập hàng mới</a>
     <a href="<?= ADMIN_URL ?>/orders.php" class="btn btn-outline">🛒 Quản lý đơn hàng</a>
     <a href="<?= ADMIN_URL ?>/users.php" class="btn btn-secondary">👥 Xem khách hàng</a>

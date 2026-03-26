@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/layout.php';
+require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
 $admin = auth_admin();
