@@ -5,6 +5,8 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/layout.php';
 
+session_init();
+
 admin_layout_start('Dashboard', 'dashboard');
 
 $revenue    = db_val("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE status<>'cancelled'");

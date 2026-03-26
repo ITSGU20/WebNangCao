@@ -14,7 +14,7 @@ define('DB_CHARSET', 'utf8mb4');
 define('BASE_URL', '/lafleur');                     // Thư mục gốc trên server
 define('UPLOAD_DIR', __DIR__ . '/../uploads/products/');
 define('UPLOAD_URL', BASE_URL . '/uploads/products/');
-define('ADMIN_URL',  BASE_URL . '/lafleur/admin');
+define('ADMIN_URL',  BASE_URL . '/admin');
 
 // --- Upload settings ---
 define('MAX_FILE_SIZE', 5 * 1024 * 1024);  // 5MB
