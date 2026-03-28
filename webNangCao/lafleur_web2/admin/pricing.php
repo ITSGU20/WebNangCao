@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
-$msg = '';
+$msg = $_GET['flash'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -29,6 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $msg = 'success:Đã cập nhật hàng loạt.';
     }
+}
+
+// PRG: redirect after successful POST so modal closes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with($msg, 'success:')) {
+    redirect(ADMIN_URL . '/pricing.php?flash=' . urlencode($msg));
 }
 
 $search  = trim($_GET['search'] ?? '');
@@ -124,6 +129,8 @@ $noCost  = db_val('SELECT COUNT(*) FROM products WHERE cost_price=0 AND is_activ
       <input type="hidden" name="action" value="save_price">
       <input type="hidden" name="id" value="<?= $editP['id'] ?>">
       <div class="modal-body">
+        <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
+        
         <p style="margin-bottom:1rem;font-weight:600"><?= h($editP['emoji'].' '.$editP['name']) ?></p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;font-size:.85rem;background:var(--bg);padding:.8rem;border-radius:8px">
           <div><span style="color:var(--muted);display:block;font-size:.75rem">Giá vốn hiện tại</span><strong><?= format_currency($editP['cost_price']) ?></strong></div>

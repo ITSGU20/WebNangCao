@@ -91,14 +91,14 @@ admin_layout_start('Quản lý đơn hàng','orders');
     <input type="date" name="from" value="<?= h($dateFrom) ?>" class="form-control" style="width:155px" title="Từ ngày">
     <input type="date" name="to"   value="<?= h($dateTo) ?>"   class="form-control" style="width:155px" title="Đến ngày">
     <button type="submit" class="btn btn-outline">Lọc</button>
-    <a href="?<?= $sortAddr?'':'sort_addr=1' ?>&status=<?= h($statusF) ?>" class="btn btn-outline" style="<?= $sortAddr?'background:var(--chocolate);color:white':'' ?>">📍 Sắp theo địa chỉ</a>
+    <a href="?<?= $sortAddr?'':'sort_addr=1' ?>&status=<?= h($statusF) ?>" class="btn btn-outline" style="<?= $sortAddr?'background:var(--chocolate);color:white':'' ?>">📍 Sắp theo xã/phường</a>
     <a href="<?= ADMIN_URL ?>/admin_orders.php" class="btn btn-secondary">Xoá lọc</a>
   </form>
 </div>
 
 <div class="card">
   <table class="admin-table">
-    <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th><th>Địa chỉ</th><th>Tổng tiền</th><th>Thanh toán</th><th>TT</th><th>Thao tác</th></tr></thead>
+    <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th><th>Xã/Phường, Tỉnh</th><th>Tổng tiền</th><th>Thanh toán</th><th>TT</th><th>Thao tác</th></tr></thead>
     <tbody>
       <?php foreach ($paged['items'] as $o):
         $sl = order_status_label($o['status']); ?>

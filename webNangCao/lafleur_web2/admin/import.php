@@ -7,7 +7,7 @@ require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
 $admin = auth_admin();
-$msg   = '';
+$msg = $_GET['flash'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -71,6 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+// PRG: redirect after successful POST so modal closes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with($msg, 'success:')) {
+    redirect(ADMIN_URL . '/import.php?flash=' . urlencode($msg));
 }
 
 // Filters
@@ -165,6 +170,8 @@ admin_layout_start('Quản lý nhập hàng','import');
       <a href="<?= ADMIN_URL ?>/import.php" class="modal-close">✕</a>
     </div>
     <div class="modal-body">
+        <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
+        
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;font-size:.87rem">
         <div><span style="color:var(--muted)">Ngày nhập:</span> <strong><?= format_date($viewReceipt['import_date']) ?></strong></div>
         <div><span style="color:var(--muted)">Trạng thái:</span>
@@ -231,7 +238,7 @@ admin_layout_start('Quản lý nhập hàng','import');
             <select name="product_id[]" class="form-control">
               <option value="">-- Chọn SP --</option>
               <?php foreach ($allProducts as $ap): ?>
-                <option value="<?= $ap['id'] ?>" <?= ($ri['product_id']==$ap['id'])?'selected':'' ?>><?= h($ap['emoji'].' '.$ap['name'].' (tồn:'.$ap['stock'].')') ?></option>
+                <option value="<?= $ap['id'] ?>" <?= ($ri['product_id']==$ap['id'])?'selected':'' ?>><?= h($ap['emoji'].' '.$ap['name']) ?></option>
               <?php endforeach; ?>
             </select>
             <input type="number" name="quantity[]" class="form-control" value="<?= $ri['quantity'] ?>" min="1" style="text-align:center">
@@ -251,7 +258,7 @@ admin_layout_start('Quản lý nhập hàng','import');
   </div>
 </div>
 <script>
-const productOpts = `<?php echo implode('', array_map(fn($p)=>'<option value="'.$p['id'].'">'.$p['emoji'].' '.htmlspecialchars($p['name']).' (tồn:'.$p['stock'].')</option>', $allProducts)); ?>`;
+const productOpts = `<?php echo implode('', array_map(fn($p)=>'<option value="'.$p['id'].'">'.$p['emoji'].' '.htmlspecialchars($p['name']).'</option>', $allProducts)); ?>`;
 function addRow(){
   const row=document.createElement('div');
   row.className='import-row';

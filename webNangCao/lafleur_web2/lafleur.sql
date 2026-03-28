@@ -17,7 +17,7 @@ CREATE TABLE users (
     phone       VARCHAR(15)   NOT NULL,
     password    VARCHAR(255)  NOT NULL,          -- password_hash()
     address     VARCHAR(255)  DEFAULT '',
-    district    VARCHAR(100)  DEFAULT '',
+    ward        VARCHAR(100)  DEFAULT '',          -- phường/xã/thị trấn
     city        VARCHAR(100)  DEFAULT 'TP.HCM',
     role        ENUM('customer','admin') NOT NULL DEFAULT 'customer',
     is_active   TINYINT(1)   NOT NULL DEFAULT 1,
@@ -139,24 +139,41 @@ INSERT INTO categories (name, emoji, description) VALUES
 ('Bánh tart',    '🥧', 'Tart trái cây, trứng, socola');
 
 -- Products
-INSERT INTO products (category_id, code, name, emoji, description, cost_price, profit_rate, stock) VALUES
-(1,'BK001','Bánh kem dâu tây',   '🍓','Bánh kem tươi phủ dâu tây ngọt chua, kem vanilla mềm mịn.', 90000, 66.67, 15),
-(1,'BK002','Bánh kem chocolate', '🍫','Bánh kem chocolate Bỉ đậm đà, lớp mousse mượt mà.',        110000, 63.64, 12),
-(1,'BK003','Bánh kem matcha',    '🍵','Bánh kem matcha Nhật Bản thượng hạng, vị trà xanh.',        100000, 60.00,  8),
-(1,'BK004','Bánh kem tiramisu',  '☕','Bánh kem tiramisu Ý với mascarpone béo ngậy.',               120000, 62.50, 10),
-(2,'BMN001','Croissant bơ Pháp','🥐','Croissant bơ Pháp chính gốc, 72 lớp bột xếp tầng.',         18000, 94.44, 50),
-(2,'BMN002','Bánh mì hoa cúc',  '🍞','Bánh mì hoa cúc kiểu Pháp - Brioche, bơ thơm.',             25000, 80.00, 30),
-(3,'BQ001','Bánh quy bơ hộp',   '🍪','Hộp bánh quy bơ Denmark cao cấp 300g.',                     65000, 84.62, 40),
-(3,'BQ002','Bánh quy choco chip','🫐','Bánh quy chocolate chip Mỹ đặc biệt, chocolate 70%.',       70000, 85.71, 35),
-(4,'MC001','Macaron hương dâu', '🩷','Macaron vỏ hồng đậu hương dâu tây, nhân buttercream.',       13000, 92.31, 60),
-(4,'MC002','Macaron vanilla',   '🤍','Macaron vanilla Madagascar thuần khiết.',                     13000, 92.31, 55),
-(4,'MC003','Hộp macaron 12 cái','🎁','Hộp macaron mix 12 hương vị đặc biệt.',                     145000, 79.31, 20),
-(5,'BT001','Tart trái cây tươi','🍇','Bánh tart vỏ giòn nhân kem patisserie mịn.',                 30000, 83.33, 25),
-(5,'BT002','Tart trứng Bồ Đào Nha','🥚','Pastel de nata - Tart trứng chuẩn gốc.',                 15000,100.00, 45);
+-- stock mặc định = 0, cập nhật qua phiếu nhập hàng (import.php)
+INSERT INTO products (category_id, code, name, emoji, description, cost_price, profit_rate) VALUES
+(1,'BK001','Bánh kem dâu tây',   '🍓','Bánh kem tươi phủ dâu tây ngọt chua, kem vanilla mềm mịn.', 90000, 66.67),
+(1,'BK002','Bánh kem chocolate', '🍫','Bánh kem chocolate Bỉ đậm đà, lớp mousse mượt mà.',        110000, 63.64),
+(1,'BK003','Bánh kem matcha',    '🍵','Bánh kem matcha Nhật Bản thượng hạng, vị trà xanh.',        100000, 60.00),
+(1,'BK004','Bánh kem tiramisu',  '☕','Bánh kem tiramisu Ý với mascarpone béo ngậy.',               120000, 62.50),
+(2,'BMN001','Croissant bơ Pháp','🥐','Croissant bơ Pháp chính gốc, 72 lớp bột xếp tầng.',         18000, 94.44),
+(2,'BMN002','Bánh mì hoa cúc',  '🍞','Bánh mì hoa cúc kiểu Pháp - Brioche, bơ thơm.',             25000, 80.00),
+(3,'BQ001','Bánh quy bơ hộp',   '🍪','Hộp bánh quy bơ Denmark cao cấp 300g.',                     65000, 84.62),
+(3,'BQ002','Bánh quy choco chip','🫐','Bánh quy chocolate chip Mỹ đặc biệt, chocolate 70%.',       70000, 85.71),
+(4,'MC001','Macaron hương dâu', '🩷','Macaron vỏ hồng đậu hương dâu tây, nhân buttercream.',       13000, 92.31),
+(4,'MC002','Macaron vanilla',   '🤍','Macaron vanilla Madagascar thuần khiết.',                     13000, 92.31),
+(4,'MC003','Hộp macaron 12 cái','🎁','Hộp macaron mix 12 hương vị đặc biệt.',                     145000, 79.31),
+(5,'BT001','Tart trái cây tươi','🍇','Bánh tart vỏ giòn nhân kem patisserie mịn.',                 30000, 83.33),
+(5,'BT002','Tart trứng Bồ Đào Nha','🥚','Pastel de nata - Tart trứng chuẩn gốc.',                 15000,100.00);
 
 -- Sample customer accounts (password: 123456)
-INSERT INTO users (name, email, phone, password, address, district, city, role) VALUES
-('Nguyễn Thị Lan',  'lan.nguyen@email.com',  '0901234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '123 Lê Lợi', 'Quận 1', 'TP.HCM', 'customer'),
-('Trần Văn Minh',   'minh.tran@email.com',   '0912345678', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '456 Nguyễn Huệ', 'Quận 1', 'TP.HCM', 'customer');
+INSERT INTO users (name, email, phone, password, address, ward, city, role) VALUES
+('Nguyễn Thị Lan',  'lan.nguyen@email.com',  '0901234567', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '123 Lê Lợi', 'Phường Bến Thành', 'TP.HCM', 'customer'),
+('Trần Văn Minh',   'minh.tran@email.com',   '0912345678', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '456 Nguyễn Huệ', 'Phường Bến Nghé', 'TP.HCM', 'customer');
 -- NOTE: hash trên = password_hash('password') — đây chỉ là tài khoản demo
 -- Khách hàng thật đăng ký qua trang register.php
+
+-- ============================================================
+-- MIGRATION: đổi tên cột district → ward trong bảng users
+-- Chạy lệnh này nếu database đã tồn tại từ phiên bản cũ:
+-- ============================================================
+-- ALTER TABLE users CHANGE district ward VARCHAR(100) DEFAULT '';
+
+-- ============================================================
+-- MIGRATION: bỏ chức năng điều chỉnh tồn kho thủ công
+-- Cột stock vẫn giữ nguyên, KHÔNG xóa.
+-- stock chỉ được cập nhật tự động qua 2 luồng:
+--   + Tăng: khi hoàn thành phiếu nhập (import.php → status=completed)
+--   + Giảm: khi đặt hàng (checkout.php) hoặc hủy đơn (admin_orders.php → cancel)
+-- Tồn kho tại ngày bất kỳ tính bằng: SUM(nhập đến ngày đó) - SUM(bán đến ngày đó)
+-- Không cần ALTER nào thêm cho migration này.
+-- ============================================================

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
-$msg = '';
+$msg = $_GET['flash'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -36,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         else db_exec('DELETE FROM categories WHERE id=?',[$id]);
         $msg='success:Đã xử lý danh mục.';
     }
+}
+
+// PRG: redirect after successful POST so modal closes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with($msg, 'success:')) {
+    redirect(ADMIN_URL . '/categories.php?flash=' . urlencode($msg));
 }
 
 $search = trim($_GET['search']??'');
@@ -103,6 +108,8 @@ if ($m) echo '<div class="alert alert-'.($t==='error'?'danger':'success').' mb-3
       <input type="hidden" name="action" value="save">
       <input type="hidden" name="id" value="<?= $editCat['id']??0 ?>">
       <div class="modal-body">
+        <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
+        
         <div class="form-group"><label class="form-label">Emoji</label>
           <input type="text" name="emoji" class="form-control" value="<?= h($editCat['emoji']??'') ?>" placeholder="🎂" style="width:80px;font-size:1.5rem;text-align:center"></div>
         <div class="form-group"><label class="form-label">Tên danh mục *</label>

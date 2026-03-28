@@ -32,7 +32,7 @@ function auth_login_user(array $user): void {
         'email'    => $user['email'],
         'phone'    => $user['phone'] ?? '',
         'address'  => $user['address'] ?? '',
-        'district' => $user['district'] ?? '',
+        'ward'     => $user['ward'] ?? '',
         'city'     => $user['city'] ?? 'TP.HCM',
         'role'     => $user['role'],
     ];

@@ -16,7 +16,95 @@ $error   = '';
 $success = false;
 $orderId = null;
 
-$districts = ['Quận 1','Quận 2','Quận 3','Quận 4','Quận 5','Quận 6','Quận 7','Quận 8','Quận 9','Quận 10','Quận 11','Quận 12','Bình Thạnh','Gò Vấp','Tân Bình','Tân Phú','Phú Nhuận','Bình Chánh','Nhà Bè','Củ Chi','Hóc Môn'];
+$wards = [
+    // Quận 1
+    'Phường Bến Nghé','Phường Bến Thành','Phường Cầu Kho','Phường Cầu Ông Lãnh',
+    'Phường Cô Giang','Phường Đa Kao','Phường Nguyễn Cư Trinh','Phường Nguyễn Thái Bình',
+    'Phường Phạm Ngũ Lão','Phường Tân Định',
+    // Quận 3
+    'Phường 1 (Q3)','Phường 2 (Q3)','Phường 3 (Q3)','Phường 4 (Q3)','Phường 5 (Q3)',
+    'Phường 6 (Q3)','Phường 7 (Q3)','Phường 8 (Q3)','Phường 9 (Q3)','Phường 10 (Q3)',
+    'Phường 11 (Q3)','Phường 12 (Q3)','Phường 13 (Q3)','Phường 14 (Q3)',
+    // Quận 4
+    'Phường 1 (Q4)','Phường 2 (Q4)','Phường 3 (Q4)','Phường 4 (Q4)','Phường 5 (Q4)',
+    'Phường 6 (Q4)','Phường 7 (Q4)','Phường 8 (Q4)','Phường 9 (Q4)','Phường 10 (Q4)',
+    'Phường 13 (Q4)','Phường 14 (Q4)','Phường 15 (Q4)','Phường 16 (Q4)','Phường 18 (Q4)',
+    // Quận 5
+    'Phường 1 (Q5)','Phường 2 (Q5)','Phường 3 (Q5)','Phường 4 (Q5)','Phường 5 (Q5)',
+    'Phường 6 (Q5)','Phường 7 (Q5)','Phường 8 (Q5)','Phường 9 (Q5)','Phường 10 (Q5)',
+    'Phường 11 (Q5)','Phường 12 (Q5)','Phường 13 (Q5)','Phường 14 (Q5)','Phường 15 (Q5)',
+    // Quận 6
+    'Phường 1 (Q6)','Phường 2 (Q6)','Phường 3 (Q6)','Phường 4 (Q6)','Phường 5 (Q6)',
+    'Phường 6 (Q6)','Phường 7 (Q6)','Phường 8 (Q6)','Phường 9 (Q6)','Phường 10 (Q6)',
+    'Phường 11 (Q6)','Phường 12 (Q6)','Phường 13 (Q6)','Phường 14 (Q6)',
+    // Quận 7
+    'Phường Bình Thuận','Phường Phú Mỹ','Phường Phú Thuận','Phường Tân Hưng',
+    'Phường Tân Kiểng','Phường Tân Phong','Phường Tân Phú (Q7)','Phường Tân Quy',
+    'Phường Tân Thuận Đông','Phường Tân Thuận Tây',
+    // Quận 8
+    'Phường 1 (Q8)','Phường 2 (Q8)','Phường 3 (Q8)','Phường 4 (Q8)','Phường 5 (Q8)',
+    'Phường 6 (Q8)','Phường 7 (Q8)','Phường 8 (Q8)','Phường 9 (Q8)','Phường 10 (Q8)',
+    'Phường 11 (Q8)','Phường 12 (Q8)','Phường 13 (Q8)','Phường 14 (Q8)','Phường 15 (Q8)','Phường 16 (Q8)',
+    // Quận 10
+    'Phường 1 (Q10)','Phường 2 (Q10)','Phường 3 (Q10)','Phường 4 (Q10)','Phường 5 (Q10)',
+    'Phường 6 (Q10)','Phường 7 (Q10)','Phường 8 (Q10)','Phường 9 (Q10)','Phường 10 (Q10)',
+    'Phường 11 (Q10)','Phường 12 (Q10)','Phường 13 (Q10)','Phường 14 (Q10)','Phường 15 (Q10)',
+    // Quận 11
+    'Phường 1 (Q11)','Phường 2 (Q11)','Phường 3 (Q11)','Phường 4 (Q11)','Phường 5 (Q11)',
+    'Phường 6 (Q11)','Phường 7 (Q11)','Phường 8 (Q11)','Phường 9 (Q11)','Phường 10 (Q11)',
+    'Phường 11 (Q11)','Phường 12 (Q11)','Phường 13 (Q11)','Phường 14 (Q11)','Phường 15 (Q11)','Phường 16 (Q11)',
+    // Quận 12
+    'Phường An Phú Đông','Phường Đông Hưng Thuận','Phường Hiệp Thành',
+    'Phường Tân Chánh Hiệp','Phường Tân Hưng Thuận','Phường Tân Thới Hiệp',
+    'Phường Tân Thới Nhất','Phường Thạnh Lộc','Phường Thạnh Xuân','Phường Thới An','Phường Trung Mỹ Tây',
+    // Bình Thạnh
+    'Phường 1 (BT)','Phường 2 (BT)','Phường 3 (BT)','Phường 5 (BT)','Phường 6 (BT)',
+    'Phường 7 (BT)','Phường 11 (BT)','Phường 12 (BT)','Phường 13 (BT)','Phường 14 (BT)',
+    'Phường 15 (BT)','Phường 17 (BT)','Phường 19 (BT)','Phường 21 (BT)',
+    'Phường 22 (BT)','Phường 24 (BT)','Phường 25 (BT)','Phường 26 (BT)','Phường 27 (BT)','Phường 28 (BT)',
+    // Gò Vấp
+    'Phường 1 (GV)','Phường 3 (GV)','Phường 4 (GV)','Phường 5 (GV)','Phường 6 (GV)',
+    'Phường 7 (GV)','Phường 8 (GV)','Phường 9 (GV)','Phường 10 (GV)','Phường 11 (GV)',
+    'Phường 12 (GV)','Phường 13 (GV)','Phường 14 (GV)','Phường 15 (GV)','Phường 16 (GV)','Phường 17 (GV)',
+    // Tân Bình
+    'Phường 1 (TB)','Phường 2 (TB)','Phường 3 (TB)','Phường 4 (TB)','Phường 5 (TB)',
+    'Phường 6 (TB)','Phường 7 (TB)','Phường 8 (TB)','Phường 9 (TB)','Phường 10 (TB)',
+    'Phường 11 (TB)','Phường 12 (TB)','Phường 13 (TB)','Phường 14 (TB)','Phường 15 (TB)',
+    // Tân Phú
+    'Phường Hiệp Tân','Phường Hoà Thạnh','Phường Phú Thạnh','Phường Phú Thọ Hoà',
+    'Phường Tân Quý','Phường Tân Sơn Nhì','Phường Tân Thành','Phường Tân Thới Hoà',
+    'Phường Tân Thới Nhứt (TP)','Phường Tây Thạnh','Phường Sơn Kỳ',
+    // Phú Nhuận
+    'Phường 1 (PN)','Phường 2 (PN)','Phường 3 (PN)','Phường 4 (PN)','Phường 5 (PN)',
+    'Phường 7 (PN)','Phường 8 (PN)','Phường 9 (PN)','Phường 10 (PN)','Phường 11 (PN)',
+    'Phường 12 (PN)','Phường 13 (PN)','Phường 14 (PN)','Phường 15 (PN)','Phường 17 (PN)',
+    // TP. Thủ Đức
+    'Phường An Khánh','Phường An Lợi Đông','Phường An Phú','Phường Bình An',
+    'Phường Bình Khánh','Phường Bình Trưng Đông','Phường Bình Trưng Tây',
+    'Phường Cát Lái','Phường Thảo Điền','Phường Thủ Thiêm','Phường Thạnh Mỹ Lợi',
+    'Phường Hiệp Phú','Phường Long Bình','Phường Long Phước','Phường Long Thạnh Mỹ',
+    'Phường Long Trường','Phường Phú Hữu','Phường Tân Phú (TĐ)','Phường Tăng Nhơn Phú A','Phường Tăng Nhơn Phú B','Phường Trường Thạnh',
+    'Phường Bình Chiểu','Phường Bình Thọ','Phường Hiệp Bình Chánh','Phường Hiệp Bình Phước',
+    'Phường Linh Chiểu','Phường Linh Đông','Phường Linh Tây','Phường Linh Trung',
+    'Phường Linh Xuân','Phường Tam Bình','Phường Tam Phú','Phường Trường Thọ',
+    // Bình Chánh
+    'Thị trấn Tân Túc','Xã An Phú Tây','Xã Bình Chánh','Xã Bình Hưng','Xã Bình Lợi',
+    'Xã Đa Phước','Xã Hưng Long','Xã Lê Minh Xuân','Xã Phạm Văn Hai','Xã Phong Phú',
+    'Xã Quy Đức','Xã Tân Kiên','Xã Tân Nhựt','Xã Tân Quý Tây','Xã Vĩnh Lộc A','Xã Vĩnh Lộc B',
+    // Nhà Bè
+    'Thị trấn Nhà Bè','Xã Hiệp Phước','Xã Long Thới','Xã Nhơn Đức','Xã Phú Xuân','Xã Phước Kiển','Xã Phước Lộc',
+    // Củ Chi
+    'Thị trấn Củ Chi','Xã An Nhơn Tây','Xã An Phú (CC)','Xã Bình Mỹ','Xã Hòa Phú',
+    'Xã Nhuận Đức','Xã Phạm Văn Cội','Xã Phú Hòa Đông','Xã Phú Mỹ Hưng (CC)',
+    'Xã Tân An Hội','Xã Tân Phú Trung','Xã Tân Thạnh Đông','Xã Tân Thạnh Tây',
+    'Xã Tân Thông Hội','Xã Thái Mỹ','Xã Trung An','Xã Trung Lập Hạ','Xã Trung Lập Thượng',
+    // Hóc Môn
+    'Thị trấn Hóc Môn','Xã Bà Điểm','Xã Đông Thạnh','Xã Nhị Bình','Xã Tân Hiệp (HM)',
+    'Xã Tân Thới Nhì','Xã Tân Xuân','Xã Thới Tam Thôn','Xã Trung Chánh',
+    'Xã Xuân Thới Đông','Xã Xuân Thới Sơn','Xã Xuân Thới Thượng',
+    // Cần Giờ
+    'Thị trấn Cần Thạnh','Xã An Thới Đông','Xã Bình Khánh (CG)','Xã Long Hòa','Xã Lý Nhơn','Xã Tam Thôn Hiệp','Xã Thạnh An',
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $addrType = $_POST['addr_type'] ?? 'account';
@@ -27,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recvName     = $user['name'];
         $recvPhone    = $user['phone'];
         $recvAddress  = $user['address'];
-        $recvDistrict = $user['district'];
+        $recvDistrict = $user['ward'];
         $recvCity     = $user['city'] ?: 'TP.HCM';
     } else {
         $recvName     = trim($_POST['recv_name'] ?? '');
@@ -39,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$recvName)                    $error = 'Vui lòng nhập họ tên người nhận.';
         elseif (!validate_phone($recvPhone)) $error = 'Số điện thoại không hợp lệ.';
         elseif (!$recvAddress)             $error = 'Vui lòng nhập địa chỉ chi tiết.';
-        elseif (!$recvDistrict)            $error = 'Vui lòng chọn quận/huyện.';
+        elseif (!$recvDistrict)            $error = 'Vui lòng chọn xã/phường.';
     }
 
     if (!$error) {
@@ -160,10 +248,10 @@ render_navbar();
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Quận/Huyện *</label>
+                <label class="form-label">Xã/Phường *</label>
                 <select name="recv_district" class="form-control">
                   <option value="">-- Chọn --</option>
-                  <?php foreach ($districts as $d): ?>
+                  <?php foreach ($wards as $d): ?>
                     <option value="<?= h($d) ?>" <?= ($_POST['recv_district']??'')===$d?'selected':'' ?>><?= h($d) ?></option>
                   <?php endforeach; ?>
                 </select>

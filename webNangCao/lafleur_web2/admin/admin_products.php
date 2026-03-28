@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
-$msg = '';
+$msg = $_GET['flash'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -41,8 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     [$catId,$code,$name,$emoji,$desc,$unit,$profitRate,$imagePath,$isActive,$id]);
                 $msg='success:Cập nhật sản phẩm thành công.';
             } else {
-                db_insert('INSERT INTO products (category_id,code,name,emoji,description,unit,cost_price,profit_rate,stock,image_path,is_active) VALUES (?,?,?,?,?,?,0,?,?,?,?)',
-                    [$catId,$code,$name,$emoji,$desc,$unit,$profitRate,$stock,$imagePath,1]);
+                db_insert('INSERT INTO products (category_id,code,name,emoji,description,unit,cost_price,profit_rate,image_path,is_active) VALUES (?,?,?,?,?,?,0,?,?,?)',
+                    [$catId,$code,$name,$emoji,$desc,$unit,$profitRate,$imagePath,1]);
                 $msg='success:Thêm sản phẩm thành công.';
             }
         }
@@ -63,6 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg='success:Đã xoá sản phẩm.';
         }
     }
+}
+
+// PRG: redirect after successful POST so modal closes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with($msg, 'success:')) {
+    redirect(ADMIN_URL . '/admin_products.php?flash=' . urlencode($msg));
 }
 
 $search = trim($_GET['search']??'');
@@ -108,7 +113,7 @@ admin_layout_start('Quản lý sản phẩm','products');
 
 <div class="card">
   <table class="admin-table">
-    <thead><tr><th>Sản phẩm</th><th>Mã</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Tồn</th><th>TT</th><th>Thao tác</th></tr></thead>
+    <thead><tr><th>Sản phẩm</th><th>Mã</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>TT</th><th>Thao tác</th></tr></thead>
     <tbody>
       <?php foreach ($paged['items'] as $p):
         $sell = calc_sell_price($p['cost_price'], $p['profit_rate']);
@@ -122,7 +127,6 @@ admin_layout_start('Quản lý sản phẩm','products');
         <td><?= h($p['cat_name']) ?></td>
         <td style="color:var(--primary);font-weight:600"><?= format_currency($sell) ?></td>
         <td style="color:var(--muted)"><?= $p['cost_price']>0 ? format_currency($p['cost_price']) : '—' ?></td>
-        <td><span class="badge <?= $p['stock']<=5?'badge-danger':'badge-secondary' ?>"><?= $p['stock'] ?></span></td>
         <td><span class="badge <?= $p['is_active']?'badge-success':'badge-danger' ?>"><?= $p['is_active']?'Hiện':'Ẩn' ?></span></td>
         <td>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
@@ -158,6 +162,8 @@ admin_layout_start('Quản lý sản phẩm','products');
       <input type="hidden" name="existing_image" value="<?= h($editP['image_path']??'') ?>">
       <input type="hidden" name="remove_image" id="removeImgFlag" value="0">
       <div class="modal-body">
+        <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
+        
         <!-- Image upload -->
         <div class="form-group">
           <label class="form-label">Hình ảnh sản phẩm</label>
@@ -188,10 +194,6 @@ admin_layout_start('Quản lý sản phẩm','products');
             <input type="text" name="unit" class="form-control" value="<?= h($editP['unit']??'cái') ?>"></div>
           <div class="form-group"><label class="form-label">% Lợi nhuận mong muốn</label>
             <input type="number" name="profit_rate" class="form-control" value="<?= h($editP['profit_rate']??0) ?>" min="0" step="0.01" placeholder="60"></div>
-          <?php if (!$editP): ?>
-          <div class="form-group"><label class="form-label">Tồn kho ban đầu</label>
-            <input type="number" name="stock" class="form-control" value="0" min="0"></div>
-          <?php endif; ?>
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">Mô tả</label>
             <textarea name="description" class="form-control" rows="3"><?= h($editP['description']??'') ?></textarea></div>
           <div class="form-group" style="display:flex;align-items:center;gap:.8rem">

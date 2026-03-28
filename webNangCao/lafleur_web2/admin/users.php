@@ -7,7 +7,7 @@ require_once __DIR__ . '/admin_layout.php';
 
 admin_guard();
 
-$msg = '';
+$msg = $_GET['flash'] ?? '';
 
 // Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = 'success:Đặt lại mật khẩu thành công.';
         }
     }
+}
+
+// PRG: redirect after successful POST so modal closes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && str_starts_with($msg, 'success:')) {
+    redirect(ADMIN_URL . '/users.php?flash=' . urlencode($msg));
 }
 
 $search = trim($_GET['search'] ?? '');
@@ -159,6 +164,8 @@ $resetUser = $resetId ? db_row('SELECT id,name FROM users WHERE id=?', [$resetId
       <input type="hidden" name="action" value="save">
       <input type="hidden" name="id" value="<?= $editUser['id'] ?? 0 ?>">
       <div class="modal-body">
+        <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
+        
         <div class="form-group"><label class="form-label">Họ tên *</label>
           <input type="text" name="name" class="form-control" value="<?= h($editUser['name']??'') ?>" required></div>
         <div class="form-group"><label class="form-label">Email *</label>
