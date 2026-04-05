@@ -16,5 +16,6 @@ if (isset($_POST['clear'])) {
 
 $productId = sanitize_int($_POST['product_id'] ?? 0);
 $qty       = sanitize_int($_POST['qty'] ?? 0);
+if (!$productId) json_response(['status' => 'error', 'message' => 'Invalid product']);
 cart_update($productId, $qty);
 json_response(['status' => 'ok', 'cart_count' => cart_count(), 'cart_total' => cart_total()]);

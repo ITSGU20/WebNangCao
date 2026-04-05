@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/cart_helper.php';
 session_init();
 $user = auth_require(BASE_URL . '/login.php?redirect=' . urlencode(BASE_URL . '/checkout.php'));
 
+// Đọc giỏ hàng sớm để kiểm tra trống không
 $items = cart_get();
 if (empty($items)) redirect(BASE_URL . '/cart.php');
 
@@ -160,8 +161,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $pdo->commit();
             cart_clear();
-            $success  = true;
-            $items    = []; // reset for display
+            // Xóa ngày client trong SESSION sau khi đặt hàng thành công
+            unset($_SESSION['_client_date']);
+            $success = true;
         } catch (Exception $e) {
             $pdo->rollBack();
             $error = 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.';
@@ -170,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Đọc giỏ hàng 1 lần duy nhất để hiển thị
 $cartItems = cart_get();
 $total     = cart_total();
 

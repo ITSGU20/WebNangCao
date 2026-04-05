@@ -116,7 +116,7 @@ render_navbar();
         <div><span style="color:var(--muted)">Ngày đặt:</span> <strong><?= format_datetime($detail['created_at']) ?></strong></div>
         <div><span style="color:var(--muted)">Thanh toán:</span> <strong><?= payment_label($detail['payment_method']) ?></strong></div>
         <div><span style="color:var(--muted)">Điện thoại:</span> <strong><?= h($detail['recv_phone']) ?></strong></div>
-        <div style="grid-column:1/-1"><span style="color:var(--muted)">Địa chỉ:</span> <strong><?= h($detail['recv_address'].', '.$detail['recv_district'].', '.$detail['recv_city']) ?></strong></div>
+        <div style="grid-column:1/-1"><span style="color:var(--muted)">Địa chỉ:</span> <strong><?= h($detail['recv_address']) ?></strong></div>
       </div>
       <table class="data-table" style="font-size:.86rem">
         <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
