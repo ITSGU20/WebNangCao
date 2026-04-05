@@ -14,6 +14,54 @@ if (!$id) redirect(BASE_URL . '/index.php');
 $product = db_row('SELECT p.*,c.name AS cat_name FROM products p JOIN categories c ON c.id=p.category_id WHERE p.id=? AND p.is_active=1', [$id]);
 if (!$product) redirect(BASE_URL . '/index.php');
 
+// ── Tính tồn kho động theo ngày client ──────────────────────────────────
+// Client gửi ngày máy qua URL param ?_cd=YYYY-MM-DD (do JS redirect).
+// Chỉ chấp nhận ngày <= hôm nay (server) để tránh nhận ngày tương lai.
+$serverToday = date('Y-m-d'); // ngày thật của server
+$clientDate  = '';
+
+if (!empty($_GET['_cd'])) {
+    $cd = $_GET['_cd'];
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $cd)
+        && strtotime($cd) !== false
+        && $cd <= $serverToday) {
+        $clientDate = $cd;
+        // Lưu vào SESSION để cart/checkout dùng lại
+        $_SESSION['_client_date'] = $cd;
+    }
+} elseif (!empty($_SESSION['_client_date'])) {
+    // Không có _cd trên URL → đọc từ SESSION (khi user điều hướng sang trang khác)
+    $clientDate = $_SESSION['_client_date'];
+}
+
+$stockDate = $clientDate ?: $serverToday; // mốc tính tồn kho
+
+// Cờ: có đang xem ngày khác ngày thật không?
+// Nếu true → chỉ xem, không cho mua
+$isViewingPastDate = ($stockDate !== $serverToday);
+
+// Tồn kho tại $stockDate = tổng nhập (completed, đến ngày đó) - tổng bán (không hủy, đến ngày đó)
+$dynamicStock = (int) db_val(
+    'SELECT GREATEST(0,
+        COALESCE((SELECT SUM(ii.quantity)
+                  FROM import_items ii
+                  JOIN import_receipts ir ON ir.id = ii.receipt_id
+                  WHERE ii.product_id = ? AND ir.status = "completed"
+                    AND ir.import_date <= ?), 0)
+        -
+        COALESCE((SELECT SUM(oi.quantity)
+                  FROM order_items oi
+                  JOIN orders o ON o.id = oi.order_id
+                  WHERE oi.product_id = ? AND o.status <> "cancelled"
+                    AND DATE(o.created_at) <= ?), 0)
+    )',
+    [$id, $stockDate, $id, $stockDate]
+);
+
+// Ghi đè stock bằng giá trị tính theo thời gian
+$product['stock'] = $dynamicStock;
+// ────────────────────────────────────────────────────────────────────────
+
 $sellPrice = calc_sell_price($product['cost_price'], $product['profit_rate']);
 $related   = db_query('SELECT p.*,c.name AS cat_name FROM products p JOIN categories c ON c.id=p.category_id WHERE p.category_id=? AND p.id<>? AND p.is_active=1 LIMIT 4', [$product['category_id'], $id]);
 
@@ -30,6 +78,16 @@ $g = $gradients[$product['id'] % count($gradients)];
     <?= h($product['name']) ?>
   </div>
 </div>
+
+<?php if ($isViewingPastDate): ?>
+<div style="background:#fff3cd;border-left:4px solid #f39c12;padding:.85rem 1.5rem;max-width:1200px;margin:.75rem auto 0;border-radius:8px;font-size:.88rem;color:#856404">
+  📅 Đang xem tồn kho tại ngày <strong><?= date('d/m/Y', strtotime($stockDate)) ?></strong>
+  — Chức năng đặt hàng tạm thời bị vô hiệu.
+  <a href="<?= BASE_URL ?>/product.php?id=<?= $id ?>" style="margin-left:1rem;color:var(--caramel);font-weight:600">
+    Quay về ngày hôm nay →
+  </a>
+</div>
+<?php endif; ?>
 
 <div class="product-detail-layout">
   <div>
@@ -79,7 +137,13 @@ $g = $gradients[$product['id'] % count($gradients)];
         <button class="qty-btn" onclick="changeQty(1)">+</button>
       </div>
     </div>
-    <?php if ($product['stock'] > 0): ?>
+
+    <?php if ($isViewingPastDate): ?>
+    
+    <div class="detail-actions">
+      <button class="btn btn-secondary btn-lg" disabled>🔒 Chỉ xem — không thể đặt hàng</button>
+    </div>
+    <?php elseif ($product['stock'] > 0): ?>
     <div class="detail-actions">
       <button class="btn btn-caramel btn-lg" onclick="doAddCart()">🛒 Thêm vào giỏ</button>
       <button class="btn btn-primary btn-lg" onclick="doBuyNow()">⚡ Mua ngay</button>
@@ -89,6 +153,7 @@ $g = $gradients[$product['id'] % count($gradients)];
       <button class="btn btn-secondary btn-lg" disabled>❌ Hết hàng</button>
     </div>
     <?php endif; ?>
+
     <div style="margin-top:1.5rem;padding:1.2rem;border:1px solid var(--border);border-radius:8px;font-size:.83rem;color:var(--gray)">
       ✅ Bánh tươi làm trong ngày &nbsp;|&nbsp; 🔄 Đổi trả 24h &nbsp;|&nbsp; 🛡️ Thanh toán an toàn
     </div>
@@ -105,7 +170,26 @@ $g = $gradients[$product['id'] % count($gradients)];
 <?php endif; ?>
 
 <script>
-const maxStock = <?= (int)$product['stock'] ?>;
+// ── Gửi ngày máy client qua URL param _cd ──
+(function () {
+    const d = new Date();
+    const today = d.getFullYear() + '-'
+        + String(d.getMonth() + 1).padStart(2, '0') + '-'
+        + String(d.getDate()).padStart(2, '0');
+
+    const phpUsedDate = '<?= $stockDate ?>';
+
+    // Chỉ redirect nếu PHP chưa dùng đúng ngày client
+    // VÀ _cd trên URL chưa phải ngày client (tránh redirect vô hạn)
+    const urlCd = new URLSearchParams(location.search).get('_cd');
+    if (today !== phpUsedDate && urlCd !== today) {
+        const url = new URL(location.href);
+        url.searchParams.set('_cd', today);
+        location.replace(url.toString());
+    }
+})();
+
+const maxStock = <?= $dynamicStock ?>;
 let qty = 1;
 function changeQty(d){qty=Math.max(1,Math.min(qty+d,maxStock));document.getElementById('qtyDisplay').textContent=qty}
 function doAddCart(){

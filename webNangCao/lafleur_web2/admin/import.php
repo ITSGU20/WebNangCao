@@ -83,12 +83,42 @@ $statusF = $_GET['status'] ?? '';
 $dateFrom= $_GET['from'] ?? '';
 $dateTo  = $_GET['to']   ?? '';
 $page    = max(1,sanitize_int($_GET['page']??1));
+
+// Server-side validate: nếu chỉ có 1 trong 2 ngày → bỏ cả 2
+if (($dateFrom && !$dateTo) || (!$dateFrom && $dateTo)) {
+    $dateFrom = $dateTo = '';
+}
+// Server-side validate: từ ngày không được lớn hơn đến ngày
+if ($dateFrom && $dateTo && $dateFrom > $dateTo) {
+    $dateFrom = $dateTo = '';
+}
+
 $where=['1=1']; $params=[];
 if ($statusF) { $where[]='r.status=?'; $params[]=$statusF; }
 if ($dateFrom){ $where[]='r.import_date>=?'; $params[]=$dateFrom; }
 if ($dateTo)  { $where[]='r.import_date<=?'; $params[]=$dateTo; }
 $sql='SELECT r.*,u.name AS created_by_name FROM import_receipts r LEFT JOIN users u ON u.id=r.created_by WHERE '.implode(' AND ',$where).' ORDER BY r.created_at DESC';
 $paged=db_paginate($sql,$params,$page,ADMIN_PAGE_SIZE);
+
+// Fix N+1: lấy toàn bộ items của các phiếu trong trang hiện tại bằng 1 query
+$receiptIds = array_column($paged['items'], 'id');
+$allItems = [];
+if (!empty($receiptIds)) {
+    $inClause = implode(',', array_fill(0, count($receiptIds), '?'));
+    $rawItems = db_query(
+        "SELECT receipt_id,
+                COUNT(DISTINCT product_id) AS so_sp,
+                SUM(quantity)              AS tong_sl,
+                SUM(quantity * import_price) AS tong_tien
+         FROM import_items
+         WHERE receipt_id IN ($inClause)
+         GROUP BY receipt_id",
+        $receiptIds
+    );
+    foreach ($rawItems as $row) {
+        $allItems[$row['receipt_id']] = $row;
+    }
+}
 
 $editId    = sanitize_int($_GET['edit']??0);
 $viewId    = sanitize_int($_GET['view']??0);
@@ -104,43 +134,92 @@ admin_layout_start('Quản lý nhập hàng','import');
 [$t,$m]=explode(':',$msg?:':',2); if ($m) echo '<div class="alert alert-'.($t==='error'?'danger':'success').' mb-3">'.h($m).'</div>';
 ?>
 <div class="filter-bar card" style="margin-bottom:1.5rem">
-  <form method="GET" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+  <form method="GET" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center" onsubmit="return validateDateRange()">
     <select name="status" class="form-control" style="width:180px">
       <option value="">Tất cả trạng thái</option>
       <option value="pending" <?= $statusF==='pending'?'selected':'' ?>>Chờ xử lý</option>
       <option value="completed" <?= $statusF==='completed'?'selected':'' ?>>Hoàn thành</option>
     </select>
-    <input type="date" name="from" value="<?= h($dateFrom) ?>" class="form-control" style="width:160px" title="Từ ngày">
-    <input type="date" name="to" value="<?= h($dateTo) ?>" class="form-control" style="width:160px" title="Đến ngày">
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <label style="font-size:.83rem;font-weight:600;color:var(--muted);white-space:nowrap">Từ ngày:</label>
+      <input type="date" name="from" id="dateFrom" value="<?= h($dateFrom) ?>" class="form-control" style="width:160px">
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <label style="font-size:.83rem;font-weight:600;color:var(--muted);white-space:nowrap">Đến ngày:</label>
+      <input type="date" name="to" id="dateTo" value="<?= h($dateTo) ?>" class="form-control" style="width:160px">
+    </div>
     <button type="submit" class="btn btn-outline">Lọc</button>
+    <?php if ($dateFrom || $dateTo || $statusF): ?>
+      <a href="?" class="btn btn-secondary">✕ Bỏ lọc</a>
+    <?php endif; ?>
     <a href="?add=1" class="btn btn-primary" style="margin-left:auto">+ Tạo phiếu nhập</a>
   </form>
+
+  <?php if (($dateFrom && !$dateTo) || (!$dateFrom && $dateTo)): ?>
+  <div style="margin-top:.75rem;background:#fff3cd;border-radius:8px;padding:.65rem 1rem;font-size:.84rem;color:#856404;border-left:4px solid #f39c12">
+    ⚠️ Vui lòng chọn <strong>cả hai</strong>: <em>Từ ngày</em> và <em>Đến ngày</em> để lọc theo khoảng thời gian.
+  </div>
+  <?php endif; ?>
+
+  <?php if ($dateFrom && $dateTo): ?>
+  <div style="margin-top:.75rem;background:#e8f4f8;border-radius:8px;padding:.65rem 1rem;font-size:.84rem;color:#0a4d68">
+    📅 Đang xem phiếu nhập từ <strong><?= date('d/m/Y', strtotime($dateFrom)) ?></strong> đến <strong><?= date('d/m/Y', strtotime($dateTo)) ?></strong>
+  </div>
+  <?php endif; ?>
+
+  <div id="date-error" style="display:none;margin-top:.75rem;background:#f8d7da;border-radius:8px;padding:.65rem 1rem;font-size:.84rem;color:#721c24;border-left:4px solid #e74c3c"></div>
 </div>
+
+<script>
+function validateDateRange() {
+  const from   = document.getElementById('dateFrom').value;
+  const to     = document.getElementById('dateTo').value;
+  const errBox = document.getElementById('date-error');
+  if ((from && !to) || (!from && to)) {
+    errBox.textContent = '❌ Vui lòng chọn cả "Từ ngày" và "Đến ngày" để lọc theo khoảng thời gian.';
+    errBox.style.display = 'block';
+    return false;
+  }
+  if (from && to && from > to) {
+    errBox.textContent = '❌ "Từ ngày" không được lớn hơn "Đến ngày".';
+    errBox.style.display = 'block';
+    return false;
+  }
+  errBox.style.display = 'none';
+  return true;
+}
+document.getElementById('dateFrom').addEventListener('change', () => document.getElementById('date-error').style.display = 'none');
+document.getElementById('dateTo').addEventListener('change',   () => document.getElementById('date-error').style.display = 'none');
+</script>
 
 <div class="card">
   <table class="admin-table">
     <thead><tr><th>Mã phiếu</th><th>Ngày nhập</th><th>Số SP</th><th>Tổng SL</th><th>Tổng giá trị</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>
       <?php foreach ($paged['items'] as $r):
-        $rItems = db_query('SELECT * FROM import_items WHERE receipt_id=?',[$r['id']]);
-        $totalQty = array_sum(array_column($rItems,'quantity'));
-        $totalVal = array_sum(array_map(fn($i)=>$i['quantity']*$i['import_price'],$rItems));
+        $rData    = $allItems[$r['id']] ?? ['so_sp'=>0,'tong_sl'=>0,'tong_tien'=>0];
+        $totalQty = (int)$rData['tong_sl'];
+        $totalVal = (float)$rData['tong_tien'];
+        $soSp     = (int)$rData['so_sp'];
         $isPending= $r['status']==='pending';
       ?>
       <tr>
         <td><code style="background:var(--bg);padding:.15rem .4rem;border-radius:4px">#<?= $r['id'] ?></code></td>
         <td><?= format_date($r['import_date']) ?></td>
-        <td><?= count($rItems) ?></td>
+        <td><?= $soSp ?></td>
         <td><?= $totalQty ?></td>
         <td style="font-weight:600"><?= format_currency($totalVal) ?></td>
         <td><span class="badge <?= $isPending?'badge-warning':'badge-success' ?>"><?= $isPending?'Chờ xử lý':'Hoàn thành' ?></span></td>
         <td>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-            <a href="?view=<?= $r['id'] ?>" class="btn btn-sm btn-outline">Xem</a>
+            <a href="?view=<?= $r['id'] ?>&<?= http_build_query(array_filter(['status'=>$statusF,'from'=>$dateFrom,'to'=>$dateTo])) ?>" class="btn btn-sm btn-outline" onclick="openModal(this);return false">Xem</a>
             <?php if ($isPending): ?>
-              <a href="?edit=<?= $r['id'] ?>" class="btn btn-sm btn-outline">Sửa</a>
-              <form method="POST" style="display:inline" onsubmit="return confirm('Hoàn thành phiếu nhập? Tồn kho sẽ được cập nhật.')">
-                <?= csrf_field() ?>
+              <a href="?edit=<?= $r['id'] ?>&<?= http_build_query(array_filter(['status'=>$statusF,'from'=>$dateFrom,'to'=>$dateTo])) ?>" class="btn btn-sm btn-outline">Sửa</a>
+              <?php
+              // Load items chi tiết chỉ khi cần (cho nút Hoàn thành)
+              $rItems = db_query('SELECT * FROM import_items WHERE receipt_id=?',[$r['id']]);
+              ?>
+              <form method="POST" style="display:inline" onsubmit="return confirm('Hoàn thành phiếu nhập? Tồn kho sẽ được cập nhật.')"><?= csrf_field() ?>
                 <input type="hidden" name="action" value="complete">
                 <input type="hidden" name="receipt_id" value="<?= $r['id'] ?>">
                 <input type="hidden" name="import_date" value="<?= $r['import_date'] ?>">
@@ -162,12 +241,15 @@ admin_layout_start('Quản lý nhập hàng','import');
 </div>
 
 <!-- View Modal -->
+<?php
+$filterQs = http_build_query(array_filter(['status'=>$statusF,'from'=>$dateFrom,'to'=>$dateTo]));
+?>
 <?php if ($viewReceipt): ?>
-<div class="modal-overlay active" onclick="if(event.target===this)location.href='<?= ADMIN_URL ?>/import.php'">
+<div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
   <div class="modal" style="max-width:620px">
     <div class="modal-header">
       <h3>Phiếu nhập #<?= $viewReceipt['id'] ?></h3>
-      <a href="<?= ADMIN_URL ?>/import.php" class="modal-close">✕</a>
+      <a href="#" class="modal-close" onclick="closeModal();return false">✕</a>
     </div>
     <div class="modal-body">
         <?php if (str_starts_with($msg, 'error:')): ?><div class="alert alert-danger mb-3"><?= h(substr($msg,6)) ?></div><?php endif; ?>
@@ -199,14 +281,14 @@ admin_layout_start('Quản lý nhập hàng','import');
         </tr></tfoot>
       </table>
     </div>
-    <div class="modal-footer"><a href="<?= ADMIN_URL ?>/import.php" class="btn btn-outline">Đóng</a></div>
+    <div class="modal-footer"><a href="#" onclick="closeModal();return false" class="btn btn-outline">Đóng</a></div>
   </div>
 </div>
 <?php endif; ?>
 
 <!-- Add/Edit Modal -->
 <?php if ($showModal): ?>
-<div class="modal-overlay active" onclick="if(event.target===this)location.href='<?= ADMIN_URL ?>/import.php'">
+<div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
   <div class="modal" style="max-width:740px">
     <div class="modal-header">
       <h3><?= $editReceipt?'Sửa phiếu nhập #'.$editReceipt['id']:'Tạo phiếu nhập hàng' ?></h3>
@@ -271,5 +353,17 @@ function addRow(){
 }
 function submitForm(action){document.getElementById('importAction').value=action;document.getElementById('importForm').submit();}
 </script>
-<?php endif;
-admin_layout_end(); ?>
+<?php endif; ?>
+
+<script>
+function openModal(el) {
+    location.replace(el.href);
+}
+function closeModal() {
+    const url = new URL(location.href);
+    url.searchParams.delete('view');
+    location.replace(url.toString());
+}
+</script>
+
+<?php admin_layout_end(); ?>
