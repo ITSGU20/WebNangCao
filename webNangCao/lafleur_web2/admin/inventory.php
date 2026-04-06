@@ -105,14 +105,29 @@ if ($reportFrom && $reportTo) {
     if ($search) { $repWhere[] = 'p.name LIKE ?'; $repParams[] = "%$search%"; }
     if ($catF)   { $repWhere[] = 'p.category_id=?'; $repParams[] = $catF; }
     
-    $finalRepParams = array_merge([$reportFrom, $reportTo, $reportFrom, $reportTo], $repParams);
+    // Params: [reportTo, reportTo, reportFrom, reportTo, reportFrom, reportTo] + repParams
+    $finalRepParams = array_merge([$reportTo, $reportTo, $reportFrom, $reportTo, $reportFrom, $reportTo], $repParams);
     
     $report = db_query(
-        'SELECT p.id,p.name,p.emoji, GREATEST(0, p.stock) AS stock,
+        'SELECT p.id, p.name, p.emoji,
+                -- Tồn cuối kỳ: tính đến ngày $reportTo
+                GREATEST(0,
+                    COALESCE((SELECT SUM(ii2.quantity) FROM import_items ii2
+                              JOIN import_receipts ir2 ON ir2.id=ii2.receipt_id
+                              WHERE ii2.product_id=p.id AND ir2.status="completed"
+                                AND ir2.import_date <= ?),0)
+                    -
+                    COALESCE((SELECT SUM(oi2.quantity) FROM order_items oi2
+                              JOIN orders o2 ON o2.id=oi2.order_id
+                              WHERE oi2.product_id=p.id AND o2.status<>"cancelled"
+                                AND DATE(o2.created_at) <= ?),0)
+                ) AS stock,
+                -- Nhập trong kỳ
                 COALESCE((SELECT SUM(ii.quantity) FROM import_items ii
                           JOIN import_receipts ir ON ir.id=ii.receipt_id
                           WHERE ii.product_id=p.id AND ir.status="completed"
                             AND ir.import_date BETWEEN ? AND ?),0) AS total_imported,
+                -- Bán trong kỳ
                 COALESCE((SELECT SUM(oi.quantity) FROM order_items oi
                           JOIN orders o ON o.id=oi.order_id
                           WHERE oi.product_id=p.id AND o.status<>"cancelled"
@@ -266,7 +281,7 @@ admin_layout_start('Tồn kho & Báo cáo','inventory');
 
   <?php if ($report): ?>
   <table class="admin-table">
-    <thead><tr><th>Sản phẩm</th><th>Nhập kho</th><th>Bán ra</th><th>Tồn hiện tại</th><th>Chi tiết</th></tr></thead>
+    <thead><tr><th>Sản phẩm</th><th>Nhập kho</th><th>Bán ra</th><th>Tồn cuối kỳ</th><th>Chi tiết</th></tr></thead>
     <tbody>
       <?php foreach ($report as $r): ?>
       <tr>
