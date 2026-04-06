@@ -105,12 +105,39 @@ if ($reportFrom && $reportTo) {
     if ($search) { $repWhere[] = 'p.name LIKE ?'; $repParams[] = "%$search%"; }
     if ($catF)   { $repWhere[] = 'p.category_id=?'; $repParams[] = $catF; }
     
-    // Params: [reportTo, reportTo, reportFrom, reportTo, reportFrom, reportTo] + repParams
-    $finalRepParams = array_merge([$reportTo, $reportTo, $reportFrom, $reportTo, $reportFrom, $reportTo], $repParams);
-    
+    // Params thứ tự:
+    // [1] reportFrom-1day (tồn đầu kỳ nhập)
+    // [2] reportFrom-1day (tồn đầu kỳ bán)
+    // [3] reportTo (tồn cuối kỳ nhập)
+    // [4] reportTo (tồn cuối kỳ bán)
+    // [5] reportFrom (nhập trong kỳ từ)
+    // [6] reportTo   (nhập trong kỳ đến)
+    // [7] reportFrom (bán trong kỳ từ)
+    // [8] reportTo   (bán trong kỳ đến)
+    // + repParams
+    $dayBeforeFrom = date('Y-m-d', strtotime($reportFrom . ' -1 day'));
+    $finalRepParams = array_merge([
+        $dayBeforeFrom, $dayBeforeFrom, // tồn đầu kỳ
+        $reportTo, $reportTo,           // tồn cuối kỳ
+        $reportFrom, $reportTo,         // nhập trong kỳ
+        $reportFrom, $reportTo,         // bán trong kỳ
+    ], $repParams);
+
     $report = db_query(
         'SELECT p.id, p.name, p.emoji,
-                -- Tồn cuối kỳ: tính đến ngày $reportTo
+                -- Tồn đầu kỳ: tính đến ngày TRƯỚC reportFrom
+                GREATEST(0,
+                    COALESCE((SELECT SUM(ii0.quantity) FROM import_items ii0
+                              JOIN import_receipts ir0 ON ir0.id=ii0.receipt_id
+                              WHERE ii0.product_id=p.id AND ir0.status="completed"
+                                AND ir0.import_date <= ?),0)
+                    -
+                    COALESCE((SELECT SUM(oi0.quantity) FROM order_items oi0
+                              JOIN orders o0 ON o0.id=oi0.order_id
+                              WHERE oi0.product_id=p.id AND o0.status<>"cancelled"
+                                AND DATE(o0.created_at) <= ?),0)
+                ) AS opening_stock,
+                -- Tồn cuối kỳ: tính đến ngày reportTo
                 GREATEST(0,
                     COALESCE((SELECT SUM(ii2.quantity) FROM import_items ii2
                               JOIN import_receipts ir2 ON ir2.id=ii2.receipt_id
@@ -281,11 +308,12 @@ admin_layout_start('Tồn kho & Báo cáo','inventory');
 
   <?php if ($report): ?>
   <table class="admin-table">
-    <thead><tr><th>Sản phẩm</th><th>Nhập kho</th><th>Bán ra</th><th>Tồn cuối kỳ</th><th>Chi tiết</th></tr></thead>
+    <thead><tr><th>Sản phẩm</th><th>Tồn đầu kỳ</th><th>Nhập kho</th><th>Bán ra</th><th>Tồn cuối kỳ</th><th>Chi tiết</th></tr></thead>
     <tbody>
       <?php foreach ($report as $r): ?>
       <tr>
         <td><?= h($r['emoji'].' '.$r['name']) ?></td>
+        <td style="color:#1565c0;font-weight:600"><?= $r['opening_stock'] ?></td>
         <td style="color:#27ae60;font-weight:600">+<?= $r['total_imported'] ?></td>
         <td style="color:#e74c3c;font-weight:600">−<?= $r['total_sold'] ?></td>
         <td><span class="badge <?= $r['stock']<=0?'badge-danger':($r['stock']<=$threshold?'badge-warning':'badge-success') ?>"><?= $r['stock'] ?></span></td>
@@ -360,7 +388,11 @@ admin_layout_start('Tồn kho & Báo cáo','inventory');
 
   <?php if ($viewDate): ?>
   <div style="background:#e8f4f8;border-radius:8px;padding:.75rem 1rem;font-size:.84rem;color:#0a4d68;margin-top:1.2rem">
-    📌 Đang xem và lọc theo tồn kho tính đến cuối ngày <strong><?= date('d/m/Y',strtotime($viewDate)) ?></strong>
+    📌 <?php if ($viewDate === $today): ?>
+        Đang xem và lọc theo tồn kho <strong>vào thời điểm này</strong>
+    <?php else: ?>
+        Đang xem và lọc theo tồn kho tính đến cuối ngày <strong><?= date('d/m/Y', strtotime($viewDate)) ?></strong>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
   <?php if ($dateError): ?>
