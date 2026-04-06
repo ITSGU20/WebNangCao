@@ -51,7 +51,7 @@ function auth_admin_check(): bool { return auth_admin() !== null; }
 function auth_admin_require(): array {
     $admin = auth_admin();
     if (!$admin) {
-        header('Location: ' . ADMIN_URL . '/login.php');
+        header('Location: ' . ADMIN_URL . '/admin_login.php');
         exit;
     }
     return $admin;
