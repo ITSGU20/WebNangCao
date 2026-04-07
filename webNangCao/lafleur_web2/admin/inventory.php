@@ -53,16 +53,17 @@ if ($catF)   { $where[] = 'p.category_id=?'; $params[] = $catF; }
 
 // Xử lý tồn kho: Dùng GREATEST(0, ...) để ép số âm về 0
 $subParams = [];
-// Dù có chọn ngày hay không, luôn tính tồn kho động theo ngày thực tế.
-// Tránh trường hợp p.stock bị cộng sớm do phiếu nhập có import_date tương lai.
-$stockCutoff = $viewDate ?: $today; // ngày hôm nay nếu không chọn ngày cụ thể
-$stockSelect = "GREATEST(0, (
-    COALESCE((SELECT SUM(ii.quantity) FROM import_items ii JOIN import_receipts ir ON ir.id=ii.receipt_id WHERE ii.product_id=p.id AND ir.status='completed' AND ir.import_date<=?),0)
-    -
-    COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE oi.product_id=p.id AND o.status<>'cancelled' AND DATE(o.created_at)<=?),0)
-))";
-$subParams[] = $stockCutoff;
-$subParams[] = $stockCutoff;
+if ($viewDate) {
+    $stockSelect = "GREATEST(0, (
+        COALESCE((SELECT SUM(ii.quantity) FROM import_items ii JOIN import_receipts ir ON ir.id=ii.receipt_id WHERE ii.product_id=p.id AND ir.status='completed' AND ir.import_date<=?),0)
+        -
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE oi.product_id=p.id AND o.status<>'cancelled' AND DATE(o.created_at)<=?),0)
+    ))";
+    $subParams[] = $viewDate;
+    $subParams[] = $viewDate;
+} else {
+    $stockSelect = "GREATEST(0, p.stock)";
+}
 
 $innerSql = "SELECT p.*, c.name AS cat_name, $stockSelect AS dynamic_stock 
              FROM products p JOIN categories c ON c.id=p.category_id 
@@ -580,7 +581,7 @@ $backUrl = ADMIN_URL.'/inventory.php?'.http_build_query(array_filter([
           <div class="inv-doc-head">
             <span class="doc-id">Phiếu #<?= $imp['receipt_id'] ?></span>
             <span class="doc-meta">
-              · Hoàn thành: <?= $imp['completed_at'] ? date('H:i d/m/Y', strtotime($imp['completed_at'])) : '—' ?>
+              · Hoàn thành: <?= $imp['completed_at'] ? date('d/m/Y', strtotime($imp['completed_at'])) : '—' ?>
             </span>
             <?php if ($imp['note']): ?>
               <span class="doc-meta" style="margin-left:auto;max-width:220px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="<?= h($imp['note']) ?>">
